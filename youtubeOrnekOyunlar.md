@@ -72,4 +72,39 @@ yeni süsleme malzemeleri aç. Rahatlatıcı, başarısızlık yok, çok yüksek
 
 > Not: "Kayrahan'ın Evi" (cozy) prototipi denendi ama beğenilmedi, kaldırıldı.
 
+---
+
+## Dessert DIY — mekanik eşleştirme yol haritası
+
+**Kaynak:** oynanış videoları + mağaza açıklamaları (App Store / Google Play / Steam / yiv).
+Telif notu: sadece **mekanik/akış** taklit edilir; görsel/isim/karakter ÖZGÜN (Kayrahan).
+
+### Dessert DIY'ın çekirdek döngüsü (gözlenen)
+1. **Müşteri gelir** ve bir sipariş/istek verir (bazen belirli çeşit/renk).
+2. **Tatlı çeşidi seç** (dondurma rulo, kek, popsicle/buzlu çubuk, mirror cake, boba çay…).
+3. **Hazırla** — kremayı **sık/dök** (DIY hissi: tek tıkla değil, hareketle).
+4. **Süsle** — meyve, çikolata, şeker, bisküvi, **şurup/sos (çizerek)**.
+5. **Sun** — kâse/külah/bardak + ekstra süs.
+6. **Servise ver** → müşteri **tepki verir** (beğeni/yıldız) → **para**.
+7. Parayla **yeni malzeme/çeşit/kostüm aç** ve **dükkânı yükselt/süsle** (tezgah, tabela, sandalye, poster).
+
+### Bizim oyunda mevcut (✓) / eksik (▢)
+- ✓ Tatlı çeşidi (3: kek/dondurma/kurabiye)
+- ✓ Krema rengi seç · ✓ dokunarak süs · ✓ servis + para · ✓ 2 kilitli süs
+- ▢ **Müşteri + sipariş** (servise amaç/hedef)
+- ▢ **"Hazırlama" hareketi** (kremayı sürükleyerek sık)
+- ▢ **Şurup/sos (çizerek drizzle)**
+- ▢ Daha çok çeşit (donut, popsicle, pasta dilimi) + süs/renk
+- ▢ **Dükkân yükseltme/süsleme meta'sı**
+- ▢ Müşteri tepkisi / yıldız puanı · ▢ müzik
+
+### Uygulama sırası (faz faz yapılacak)
+- **Faz 1 — Müşteri & sipariş:** üstte sevimli müşteri + konuşma balonu (istediği çeşit/renk). Servis → tepki (😋/⭐), siparişe uyunca **bonus para**. Her serviste yeni müşteri. *(en çok "aynı oyun" hissini veren adım)*
+- **Faz 2 — Krema sıkma hareketi:** kremayı tek tıkla değil, **sürükleyerek** kubbe oluştur (DIY hissi).
+- **Faz 3 — İçerik:** +çeşit (donut/popsicle/pasta dilimi), +süs (muz/yaban mersini/bisküvi/şeker), **şurup çizme** aracı, +renk.
+- **Faz 4 — Dükkân meta'sı:** parayla dükkân süsleme/yükseltme ekranı (retention).
+- **Faz 5 — Cila:** müşteri tepkileri, yıldız puan, arka plan müziği, paylaş.
+
+Sıra: Faz 1 → 2 → 3 → 4 → 5.
+
 

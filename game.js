@@ -107,6 +107,8 @@
   let frosting = '#ff8fb3';     // seçili krema rengi
   let base = 'cupcake';         // seçili tatlı çeşidi
   let tool = 'strawberry';      // seçili süs
+  let order = null;             // müşteri siparişi { base, topping }
+  let custSeed = 0;             // müşteri görünüş çeşitliliği
   let placed = [];              // [{type,x,y,rot,col}]
   let confetti = [];
   let toast = null, toastFx = 0;
@@ -150,17 +152,31 @@
     Sound.pop(); Haptics.buzz(8);
   }
 
+  // Yeni müşteri siparişi (yalnızca açık süslerden seçer → her zaman yapılabilir)
+  function newOrder() {
+    const bases = BASES.map(b => b.id);
+    const tops = TOPPINGS.filter(t => t.free || unlocked[t.id]).map(t => t.id);
+    order = {
+      base: bases[Math.floor(Math.random() * bases.length)],
+      topping: tops[Math.floor(Math.random() * tops.length)],
+    };
+    custSeed++;
+  }
+
   function serve() {
     if (placed.length === 0) { showToast('Decorate first!'); Sound.nope(); return; }
-    const reward = 5 + Math.min(20, placed.length);
+    const matchBase = order && base === order.base;
+    const matchTop = order && placed.some(s => s.type === order.topping);
+    const perfect = matchBase && matchTop;
+    const reward = 5 + Math.min(15, placed.length) + (matchBase ? 5 : 0) + (matchTop ? 5 : 0);
     coins += reward; served++;
     Sound.serve(); Haptics.buzz([20, 40, 20]);
-    showToast('Yummy!  +' + reward + ' 🪙');
+    showToast((perfect ? '🤩 Perfect!  +' : '😋 Yummy!  +') + reward + ' 🪙');
     serveFlash = 60;
     for (let i = 0; i < 40; i++) confetti.push({ x: 270 + (Math.random() * 200 - 100), y: 340, vx: (Math.random() * 6 - 3), vy: -(2 + Math.random() * 6), life: 1, decay: 0.012 + Math.random() * 0.01, c: ['#ff5d73', '#ffd23f', '#5fd068', '#7c5cff', '#5ec5ff', '#ff8fb3'][i % 6], r: 4 + Math.random() * 4 });
     SDK.sendScore(served);
     save();
-    setTimeout(() => { placed = []; }, 650);  // kısa kutlamadan sonra yeni kek
+    setTimeout(() => { placed = []; newOrder(); }, 650);  // kutlamadan sonra yeni sipariş
   }
 
   canvas.addEventListener('pointerdown', (e) => {
@@ -359,9 +375,36 @@
     // Toast
     if (toastFx > 0 && toast) {
       ctx.globalAlpha = Math.min(1, toastFx / 25);
-      ctx.fillStyle = 'rgba(0,0,0,0.8)'; roundRect(W / 2 - 130, 116, 260, 44, 12); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 22px sans-serif'; ctx.textBaseline = 'middle'; ctx.fillText(toast, W / 2, 139); ctx.globalAlpha = 1;
+      ctx.fillStyle = 'rgba(0,0,0,0.8)'; roundRect(W / 2 - 135, 190, 270, 44, 12); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 22px sans-serif'; ctx.textBaseline = 'middle'; ctx.fillText(toast, W / 2, 213); ctx.globalAlpha = 1;
     }
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  }
+
+  function drawCustomer(cx, cy, r, seed) {
+    const skins = ['#ffd8b0', '#f1c27d', '#e0ac69', '#c68642'];
+    const hairs = ['#3a2a1a', '#6b4423', '#1f1f1f', '#a85b2b', '#caa84a'];
+    const sk = skins[seed % skins.length], ha = hairs[(seed * 3) % hairs.length];
+    ctx.fillStyle = sk; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
+    ctx.fillStyle = ha; ctx.beginPath(); ctx.arc(cx, cy - 2, r, Math.PI * 1.05, Math.PI * 1.95); ctx.fill();
+    ctx.fillStyle = '#1b2540'; ctx.beginPath(); ctx.arc(cx - r * 0.35, cy - r * 0.1, r * 0.13, 0, 7); ctx.arc(cx + r * 0.35, cy - r * 0.1, r * 0.13, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#1b2540'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy + r * 0.12, r * 0.42, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,120,150,0.4)'; ctx.beginPath(); ctx.arc(cx - r * 0.52, cy + r * 0.2, r * 0.16, 0, 7); ctx.arc(cx + r * 0.52, cy + r * 0.2, r * 0.16, 0, 7); ctx.fill();
+  }
+
+  function drawOrder() {
+    if (!order) return;
+    const x = 92, y = 118, w = 356, h = 54;
+    ctx.fillStyle = 'rgba(255,255,255,0.92)'; roundRect(x, y, w, h, 16); ctx.fill();
+    ctx.strokeStyle = '#ff9ec0'; ctx.lineWidth = 3; roundRect(x, y, w, h, 16); ctx.stroke();
+    drawCustomer(x + 32, y + h / 2, 20, custSeed);
+    ctx.fillStyle = '#7a3b55'; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText('wants', x + 62, y + h / 2);
+    const baseIcon = BASES.find(b => b.id === order.base).icon;
+    ctx.font = '30px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(baseIcon, x + w - 86, y + h / 2 + 1);
+    ctx.font = 'bold 22px sans-serif'; ctx.fillStyle = '#7a3b55'; ctx.fillText('+', x + w - 56, y + h / 2);
+    ctx.font = '30px sans-serif'; ctx.fillText(iconForTopping(order.topping), x + w - 26, y + h / 2 + 1);
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   }
 
@@ -379,6 +422,7 @@
     drawPalettes();
     drawButtons();
     drawHUD();
+    drawOrder();
   }
 
   function loop() {
@@ -400,6 +444,7 @@
     Haptics.setEnabled(hapticsOn); applyAudio();
     SDK.onAudioEnabledChange(() => applyAudio());
     SDK.onPause(() => {}); SDK.onResume(() => {});
+    newOrder();
     loop();
     SDK.gameReady();
   }
