@@ -110,7 +110,8 @@
   let order = null;             // müşteri siparişi { base, topping }
   let custSeed = 0;             // müşteri görünüş çeşitliliği
   let creamBlobs = [];          // sürükleyerek sıkılan krema (her biri {x,y,r,col})
-  let mode = 'cream';           // 'cream' (krema sık) | 'topping' (süs koy)
+  let drizzles = [];            // şurup çizgileri [{col, pts:[{x,y}]}]
+  let mode = 'cream';           // 'cream' (krema sık) | 'syrup' (sos çek) | 'topping' (süs koy)
   let placed = [];              // [{type,x,y,rot,col}]
   let confetti = [];
   let toast = null, toastFx = 0;
@@ -127,6 +128,7 @@
   const hapticBtn = { x: W - 112, y: 16, w: 46, h: 46 };
   const serveBtn  = { x: W / 2 - 150, y: 770, w: 300, h: 74 };
   const clearBtn  = { x: W - 76, y: 700, w: 60, h: 56 };
+  const syrupBtn  = { x: W - 146, y: 700, w: 60, h: 56 };   // sos (seçili renkte) modu
   function colorRect(i) { const sw = 58, gap = 14, total = COLORS.length * sw + (COLORS.length - 1) * gap; const x0 = (W - total) / 2; return { x: x0 + i * (sw + gap), y: 520, w: sw, h: 58 }; }
   function topRect(i)   { const sw = 70, gap = 12, total = TOPPINGS.length * sw + (TOPPINGS.length - 1) * gap; const x0 = (W - total) / 2; return { x: x0 + i * (sw + gap), y: 612, w: sw, h: 70 }; }
   function baseRect(i)  { return { x: W - 70, y: 200 + i * 82, w: 58, h: 70 }; }   // sağda tatlı seçim sütunu
@@ -166,11 +168,11 @@
   }
 
   function serve() {
-    if (placed.length === 0) { showToast('Decorate first!'); Sound.nope(); return; }
+    if (placed.length === 0 && drizzles.length === 0) { showToast('Decorate first!'); Sound.nope(); return; }
     const matchBase = order && base === order.base;
     const matchTop = order && placed.some(s => s.type === order.topping);
     const perfect = matchBase && matchTop;
-    const reward = 5 + Math.min(15, placed.length) + (matchBase ? 5 : 0) + (matchTop ? 5 : 0);
+    const reward = 5 + Math.min(15, placed.length) + (drizzles.length ? 3 : 0) + (matchBase ? 5 : 0) + (matchTop ? 5 : 0);
     coins += reward; served++;
     Sound.serve(); Haptics.buzz([20, 40, 20]);
     showToast((perfect ? '🤩 Perfect!  +' : '😋 Yummy!  +') + reward + ' 🪙');
@@ -178,7 +180,7 @@
     for (let i = 0; i < 40; i++) confetti.push({ x: 270 + (Math.random() * 200 - 100), y: 340, vx: (Math.random() * 6 - 3), vy: -(2 + Math.random() * 6), life: 1, decay: 0.012 + Math.random() * 0.01, c: ['#ff5d73', '#ffd23f', '#5fd068', '#7c5cff', '#5ec5ff', '#ff8fb3'][i % 6], r: 4 + Math.random() * 4 });
     SDK.sendScore(served);
     save();
-    setTimeout(() => { placed = []; creamBlobs = []; newOrder(); }, 650);  // kutlamadan sonra yeni sipariş
+    setTimeout(() => { placed = []; creamBlobs = []; drizzles = []; newOrder(); }, 650);  // kutlamadan sonra yeni sipariş
   }
 
   // Tatlının üstüne uygula: krema modunda krema sık, süs modunda süs koy.
@@ -204,13 +206,27 @@
     if (inBox(p, soundBtn))  { soundOn = !soundOn; applyAudio(); Haptics.buzz(10); save(); return; }
     if (inBox(p, hapticBtn)) { hapticsOn = !hapticsOn; Haptics.setEnabled(hapticsOn); if (hapticsOn) Haptics.buzz(20); save(); return; }
     if (inBox(p, serveBtn))  { serve(); return; }
-    if (inBox(p, clearBtn))  { if (placed.length || creamBlobs.length) { placed = []; creamBlobs = []; Sound.pick(); } return; }
-    for (let i = 0; i < BASES.length; i++) if (inBox(p, baseRect(i))) { if (base !== BASES[i].id) { base = BASES[i].id; placed = []; creamBlobs = []; } Sound.pick(); Haptics.buzz(8); return; }
-    for (let i = 0; i < COLORS.length; i++) if (inBox(p, colorRect(i))) { frosting = COLORS[i].c; mode = 'cream'; Sound.pick(); Haptics.buzz(8); return; }
+    if (inBox(p, clearBtn))  { if (placed.length || creamBlobs.length || drizzles.length) { placed = []; creamBlobs = []; drizzles = []; Sound.pick(); } return; }
+    if (inBox(p, syrupBtn))  { mode = 'syrup'; Sound.pick(); Haptics.buzz(8); return; }
+    for (let i = 0; i < BASES.length; i++) if (inBox(p, baseRect(i))) { if (base !== BASES[i].id) { base = BASES[i].id; placed = []; creamBlobs = []; drizzles = []; } Sound.pick(); Haptics.buzz(8); return; }
+    for (let i = 0; i < COLORS.length; i++) if (inBox(p, colorRect(i))) { frosting = COLORS[i].c; if (mode !== 'syrup') mode = 'cream'; Sound.pick(); Haptics.buzz(8); return; }
     for (let i = 0; i < TOPPINGS.length; i++) if (inBox(p, topRect(i))) { selectTopping(TOPPINGS[i]); return; }
-    if (inFrost(p)) { drawingBase = true; lastApply = null; if (mode === 'cream') Sound.pick(); applyAt(p); }
+    if (inFrost(p)) {
+      drawingBase = true; lastApply = null;
+      if (mode === 'syrup') { drizzles.push({ col: frosting, pts: [{ x: p.x, y: p.y }] }); Sound.pick(); }
+      else { if (mode === 'cream') Sound.pick(); applyAt(p); }
+    }
   });
-  canvas.addEventListener('pointermove', (e) => { if (!drawingBase) return; applyAt(cpoint(e)); });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!drawingBase) return;
+    const p = cpoint(e);
+    if (mode === 'syrup') {
+      if (!inFrost(p)) return;
+      const s = drizzles[drizzles.length - 1]; if (!s) return;
+      const last = s.pts[s.pts.length - 1];
+      if ((p.x - last.x) ** 2 + (p.y - last.y) ** 2 > 8 * 8 && s.pts.length < 120) { s.pts.push({ x: p.x, y: p.y }); Haptics.buzz(3); }
+    } else applyAt(p);
+  });
   addEventListener('pointerup', () => { drawingBase = false; lastApply = null; });
 
   // --- 8) Güncelleme ---
@@ -299,6 +315,19 @@
     [[-40, 430], [44, 412], [10, 452], [-58, 386], [50, 450]].forEach(p => { ctx.beginPath(); ctx.arc(cx + p[0], p[1], 7, 0, 7); ctx.fill(); });
   }
 
+  // Şurup/sos çizgileri
+  function drawDrizzle() {
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 6;
+    for (const s of drizzles) {
+      if (!s.pts.length) continue;
+      ctx.strokeStyle = s.col;
+      ctx.beginPath(); ctx.moveTo(s.pts[0].x, s.pts[0].y);
+      for (let i = 1; i < s.pts.length; i++) ctx.lineTo(s.pts[i].x, s.pts[i].y);
+      ctx.stroke();
+      if (s.pts.length === 1) { ctx.fillStyle = s.col; ctx.beginPath(); ctx.arc(s.pts[0].x, s.pts[0].y, 3, 0, 7); ctx.fill(); }
+    }
+  }
+
   // Sıkılan krema — üst üste binen daireler tek bir krema kütlesi gibi görünür.
   function drawCream() {
     for (const b of creamBlobs) { ctx.fillStyle = b.col; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.fill(); }
@@ -367,13 +396,21 @@
 
   function drawButtons() {
     // Servis
-    ctx.fillStyle = placed.length ? '#ff5d8f' : 'rgba(150,150,160,0.6)';
+    ctx.fillStyle = (placed.length || drizzles.length) ? '#ff5d8f' : 'rgba(150,150,160,0.6)';
     roundRect(serveBtn.x, serveBtn.y, serveBtn.w, serveBtn.h, 18); ctx.fill();
     ctx.fillStyle = '#fff'; ctx.font = 'bold 30px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('Serve 🍽️', serveBtn.x + serveBtn.w / 2, serveBtn.y + serveBtn.h / 2);
     // Temizle
     ctx.fillStyle = 'rgba(0,0,0,0.35)'; roundRect(clearBtn.x, clearBtn.y, clearBtn.w, clearBtn.h, 12); ctx.fill();
     ctx.font = '28px sans-serif'; ctx.fillText('🧽', clearBtn.x + clearBtn.w / 2, clearBtn.y + clearBtn.h / 2 + 1);
+    // Sos (seçili renkte dalgalı çizgi)
+    const sel = mode === 'syrup';
+    ctx.fillStyle = sel ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.35)';
+    roundRect(syrupBtn.x, syrupBtn.y, syrupBtn.w, syrupBtn.h, 12); ctx.fill();
+    if (sel) { ctx.strokeStyle = '#ff5d8f'; ctx.lineWidth = 3; roundRect(syrupBtn.x, syrupBtn.y, syrupBtn.w, syrupBtn.h, 12); ctx.stroke(); }
+    ctx.strokeStyle = frosting; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const bx = syrupBtn.x + 12, by = syrupBtn.y + syrupBtn.h / 2;
+    ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(bx + 12, by - 14, bx + 18, by); ctx.quadraticCurveTo(bx + 24, by + 14, bx + 36, by); ctx.stroke();
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   }
 
@@ -436,6 +473,7 @@
     if (heroLoaded) { const ar = hero.naturalWidth / hero.naturalHeight || 1, dh = 150, dw = dh * ar; ctx.globalAlpha = 0.95; ctx.drawImage(hero, 8, 150 - 0, dw, dh); ctx.globalAlpha = 1; }
     drawBase();
     drawCream();
+    drawDrizzle();
     for (const s of placed) drawTopping(s.type, s.x, s.y, s.rot, s.col);
     drawConfetti();
     drawBaseSelect();
