@@ -72,9 +72,14 @@
   const hero = new Image(); let heroLoaded = false; hero.onload = () => { heroLoaded = true; }; hero.src = 'assets/hero.png';
 
   // --- 4) İçerik tanımı ---
-  // Kek merkezi ve süs yerleştirme bölgesi (krema kubbesi)
-  const CAKE = { cx: 270, top: 250, plateY: 470 };
-  const FROST = { cx: 270, cy: 360, rx: 130, ry: 92 };   // süs yerleştirme elipsi
+  const CAKE = { cx: 270, plateY: 470 };
+  const BASES = [{ id: 'cupcake', icon: '🧁' }, { id: 'ice', icon: '🍦' }, { id: 'cookie', icon: '🍪' }];
+  // Her tatlı için süs yerleştirme (krema) elipsi
+  const FROST_BY_BASE = {
+    cupcake: { cx: 270, cy: 360, rx: 108, ry: 78 },
+    ice:     { cx: 270, cy: 332, rx: 82,  ry: 74 },
+    cookie:  { cx: 270, cy: 384, rx: 104, ry: 54 },
+  };
 
   const COLORS = [
     { id: 'pink',   c: '#ff8fb3' },
@@ -100,6 +105,7 @@
   let unlocked = { strawberry: true, choco: true, sprinkle: true, heart: true };
   let soundOn = true, hapticsOn = true;
   let frosting = '#ff8fb3';     // seçili krema rengi
+  let base = 'cupcake';         // seçili tatlı çeşidi
   let tool = 'strawberry';      // seçili süs
   let placed = [];              // [{type,x,y,rot,col}]
   let confetti = [];
@@ -119,11 +125,13 @@
   const clearBtn  = { x: W - 76, y: 700, w: 60, h: 56 };
   function colorRect(i) { const sw = 58, gap = 14, total = COLORS.length * sw + (COLORS.length - 1) * gap; const x0 = (W - total) / 2; return { x: x0 + i * (sw + gap), y: 520, w: sw, h: 58 }; }
   function topRect(i)   { const sw = 70, gap = 12, total = TOPPINGS.length * sw + (TOPPINGS.length - 1) * gap; const x0 = (W - total) / 2; return { x: x0 + i * (sw + gap), y: 612, w: sw, h: 70 }; }
+  function baseRect(i)  { return { x: W - 70, y: 200 + i * 82, w: 58, h: 70 }; }   // sağda tatlı seçim sütunu
 
   // --- 7) Girdi ---
   function cpoint(e) { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) }; }
   const inBox = (p, b) => p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h;
-  const inFrost = (p) => ((p.x - FROST.cx) ** 2) / (FROST.rx ** 2) + ((p.y - FROST.cy) ** 2) / (FROST.ry ** 2) <= 1;
+  const frostRegion = () => FROST_BY_BASE[base];
+  const inFrost = (p) => { const F = frostRegion(); return ((p.x - F.cx) ** 2) / (F.rx ** 2) + ((p.y - F.cy) ** 2) / (F.ry ** 2) <= 1; };
 
   function selectTopping(it) {
     if (it.free || unlocked[it.id]) { tool = it.id; Sound.pick(); Haptics.buzz(8); return; }
@@ -162,6 +170,7 @@
     if (inBox(p, hapticBtn)) { hapticsOn = !hapticsOn; Haptics.setEnabled(hapticsOn); if (hapticsOn) Haptics.buzz(20); save(); return; }
     if (inBox(p, serveBtn))  { serve(); return; }
     if (inBox(p, clearBtn))  { if (placed.length) { placed = []; Sound.pick(); } return; }
+    for (let i = 0; i < BASES.length; i++) if (inBox(p, baseRect(i))) { if (base !== BASES[i].id) { base = BASES[i].id; placed = []; } Sound.pick(); Haptics.buzz(8); return; }
     for (let i = 0; i < COLORS.length; i++) if (inBox(p, colorRect(i))) { frosting = COLORS[i].c; Sound.pick(); Haptics.buzz(8); return; }
     for (let i = 0; i < TOPPINGS.length; i++) if (inBox(p, topRect(i))) { selectTopping(TOPPINGS[i]); return; }
     if (inFrost(p)) placeTopping(p);
@@ -216,28 +225,72 @@
     ctx.restore();
   }
 
-  function drawCake() {
+  function drawPlate() {
     const cx = CAKE.cx;
-    // Tabak
     ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(cx, CAKE.plateY, 170, 34, 0, 0, 7); ctx.fill();
     ctx.fillStyle = '#e7e7ef'; ctx.beginPath(); ctx.ellipse(cx, CAKE.plateY + 8, 150, 24, 0, 0, 7); ctx.fill();
-    // Kek kalıbı (wrapper)
+  }
+
+  function drawCupcake() {
+    const cx = CAKE.cx;
+    drawPlate();
     ctx.fillStyle = '#e6a23c';
     ctx.beginPath(); ctx.moveTo(cx - 92, 410); ctx.lineTo(cx + 92, 410); ctx.lineTo(cx + 74, CAKE.plateY - 4); ctx.lineTo(cx - 74, CAKE.plateY - 4); ctx.closePath(); ctx.fill();
     ctx.fillStyle = 'rgba(0,0,0,0.08)';
-    for (let i = -3; i <= 3; i++) { ctx.fillRect(cx + i * 24 - 3, 410, 6, 96); }
-    // Krema (seçili renk) — kubbe
+    for (let i = -3; i <= 3; i++) ctx.fillRect(cx + i * 24 - 3, 410, 6, 96);
     ctx.fillStyle = frosting;
     ctx.beginPath(); ctx.moveTo(cx - 104, 414);
     ctx.quadraticCurveTo(cx - 120, 320, cx - 50, 300);
     ctx.quadraticCurveTo(cx, 250, cx + 50, 300);
     ctx.quadraticCurveTo(cx + 120, 320, cx + 104, 414);
     ctx.closePath(); ctx.fill();
-    // Krema parlaması
-    ctx.fillStyle = 'rgba(255,255,255,0.25)';
-    ctx.beginPath(); ctx.ellipse(cx - 30, 330, 40, 22, -0.4, 0, 7); ctx.fill();
-    // tepe sürahi
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.ellipse(cx - 30, 330, 40, 22, -0.4, 0, 7); ctx.fill();
     ctx.fillStyle = frosting; ctx.beginPath(); ctx.arc(cx, 286, 16, 0, 7); ctx.fill();
+  }
+
+  function drawIce() {
+    const cx = CAKE.cx;
+    // Külah (waffle)
+    ctx.fillStyle = '#d99a4e';
+    ctx.beginPath(); ctx.moveTo(cx - 56, 372); ctx.lineTo(cx + 56, 372); ctx.lineTo(cx, 500); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,70,20,0.35)'; ctx.lineWidth = 2;
+    for (let i = -2; i <= 4; i++) { ctx.beginPath(); ctx.moveTo(cx - 56 + i * 22, 372); ctx.lineTo(cx, 500); ctx.stroke(); ctx.beginPath(); ctx.moveTo(cx + 56 - i * 22, 372); ctx.lineTo(cx, 500); ctx.stroke(); }
+    // Dondurma topu (krema rengi) — bulutsu
+    ctx.fillStyle = frosting;
+    ctx.beginPath(); ctx.arc(cx - 34, 350, 46, 0, 7); ctx.arc(cx + 34, 350, 46, 0, 7); ctx.arc(cx, 312, 52, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx, 372, 64, 26, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.ellipse(cx - 20, 322, 26, 16, -0.4, 0, 7); ctx.fill();
+  }
+
+  function drawCookie() {
+    const cx = CAKE.cx;
+    drawPlate();
+    // Kurabiye
+    ctx.fillStyle = '#d8a25a'; ctx.beginPath(); ctx.arc(cx, 400, 108, 0, 7); ctx.fill();
+    ctx.fillStyle = '#c08a42'; ctx.beginPath(); ctx.arc(cx, 400, 108, 0, 7); ctx.lineWidth = 6; ctx.strokeStyle = '#c08a42'; ctx.stroke();
+    ctx.fillStyle = '#5a3a1a';
+    [[-40, 430], [44, 412], [10, 452], [-58, 386]].forEach(p => { ctx.beginPath(); ctx.arc(cx + p[0], p[1], 7, 0, 7); ctx.fill(); });
+    // Üst krema (krema rengi)
+    ctx.fillStyle = frosting; ctx.beginPath(); ctx.ellipse(cx, 372, 100, 50, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.ellipse(cx - 30, 360, 34, 16, -0.3, 0, 7); ctx.fill();
+  }
+
+  function drawBase() {
+    if (base === 'ice') drawIce();
+    else if (base === 'cookie') drawCookie();
+    else drawCupcake();
+  }
+
+  function drawBaseSelect() {
+    for (let i = 0; i < BASES.length; i++) {
+      const r = baseRect(i), sel = base === BASES[i].id;
+      ctx.fillStyle = sel ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.28)';
+      roundRect(r.x, r.y, r.w, r.h, 14); ctx.fill();
+      if (sel) { ctx.strokeStyle = '#ff5d8f'; ctx.lineWidth = 4; roundRect(r.x, r.y, r.w, r.h, 14); ctx.stroke(); }
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '34px sans-serif'; ctx.fillStyle = '#000';
+      ctx.fillText(BASES[i].icon, r.x + r.w / 2, r.y + r.h / 2 + 1);
+    }
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   }
 
   function drawConfetti() { for (const c of confetti) { ctx.globalAlpha = Math.max(0, c.life); ctx.fillStyle = c.c; ctx.fillRect(c.x, c.y, c.r, c.r); } ctx.globalAlpha = 1; }
@@ -319,9 +372,10 @@
     ctx.fillStyle = '#ffe9f1'; ctx.fillRect(0, 470, W, H - 470);
     // şef Kayrahan (köşe)
     if (heroLoaded) { const ar = hero.naturalWidth / hero.naturalHeight || 1, dh = 150, dw = dh * ar; ctx.globalAlpha = 0.95; ctx.drawImage(hero, 8, 150 - 0, dw, dh); ctx.globalAlpha = 1; }
-    drawCake();
+    drawBase();
     for (const s of placed) drawTopping(s.type, s.x, s.y, s.rot, s.col);
     drawConfetti();
+    drawBaseSelect();
     drawPalettes();
     drawButtons();
     drawHUD();
