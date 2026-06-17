@@ -136,8 +136,8 @@
   function selectTopping(it) {
     if (it.free || unlocked[it.id]) { tool = it.id; Sound.pick(); Haptics.buzz(8); return; }
     // kilitli → satın al
-    if (coins >= it.price) { coins -= it.price; unlocked[it.id] = true; tool = it.id; Sound.buy(); Haptics.buzz([15, 30, 15]); showToast('Yeni süs açıldı!'); save(); }
-    else { Sound.nope(); Haptics.buzz(30); showToast(it.price + ' 🪙 gerekli'); }
+    if (coins >= it.price) { coins -= it.price; unlocked[it.id] = true; tool = it.id; Sound.buy(); Haptics.buzz([15, 30, 15]); showToast('New topping unlocked!'); save(); }
+    else { Sound.nope(); Haptics.buzz(30); showToast('Need ' + it.price + ' 🪙'); }
   }
 
   function placeTopping(p) {
@@ -151,11 +151,11 @@
   }
 
   function serve() {
-    if (placed.length === 0) { showToast('Önce süsle!'); Sound.nope(); return; }
+    if (placed.length === 0) { showToast('Decorate first!'); Sound.nope(); return; }
     const reward = 5 + Math.min(20, placed.length);
     coins += reward; served++;
     Sound.serve(); Haptics.buzz([20, 40, 20]);
-    showToast('Mükemmel!  +' + reward + ' 🪙');
+    showToast('Yummy!  +' + reward + ' 🪙');
     serveFlash = 60;
     for (let i = 0; i < 40; i++) confetti.push({ x: 270 + (Math.random() * 200 - 100), y: 340, vx: (Math.random() * 6 - 3), vy: -(2 + Math.random() * 6), life: 1, decay: 0.012 + Math.random() * 0.01, c: ['#ff5d73', '#ffd23f', '#5fd068', '#7c5cff', '#5ec5ff', '#ff8fb3'][i % 6], r: 4 + Math.random() * 4 });
     SDK.sendScore(served);
@@ -335,7 +335,7 @@
     ctx.fillStyle = placed.length ? '#ff5d8f' : 'rgba(150,150,160,0.6)';
     roundRect(serveBtn.x, serveBtn.y, serveBtn.w, serveBtn.h, 18); ctx.fill();
     ctx.fillStyle = '#fff'; ctx.font = 'bold 30px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('Servis Et 🍽️', serveBtn.x + serveBtn.w / 2, serveBtn.y + serveBtn.h / 2);
+    ctx.fillText('Serve 🍽️', serveBtn.x + serveBtn.w / 2, serveBtn.y + serveBtn.h / 2);
     // Temizle
     ctx.fillStyle = 'rgba(0,0,0,0.35)'; roundRect(clearBtn.x, clearBtn.y, clearBtn.w, clearBtn.h, 12); ctx.fill();
     ctx.font = '28px sans-serif'; ctx.fillText('🧽', clearBtn.x + clearBtn.w / 2, clearBtn.y + clearBtn.h / 2 + 1);
@@ -343,19 +343,19 @@
   }
 
   function drawHUD() {
-    // Para
-    ctx.fillStyle = 'rgba(0,0,0,0.35)'; roundRect(16, 16, 150, 50, 14); ctx.fill();
+    // Coins (top-left, dar kutu)
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; roundRect(16, 16, 116, 50, 14); ctx.fill();
     ctx.fillStyle = '#ffd23f'; ctx.beginPath(); ctx.arc(42, 41, 13, 0, 7); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 26px sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillText(coins, 62, 42);
-    // Başlık
-    ctx.fillStyle = 'rgba(0,0,0,0.30)'; roundRect(W / 2 - 120, 16, 240, 40, 12); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('🧁 Tatlı Dükkânı', W / 2, 37);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 24px sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillText(coins, 62, 42);
+    // Title (orta, coins ve toggle'larla çakışmayan dar kutu)
+    ctx.fillStyle = 'rgba(0,0,0,0.30)'; roundRect(W / 2 - 92, 16, 184, 40, 12); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 19px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Dessert Shop', W / 2, 37);
     ctx.textAlign = 'left';
     drawToggle(soundBtn, '🔊', soundOn); drawToggle(hapticBtn, '📳', hapticsOn);
-    // İpucu / kutlama
+    // Hint / celebration
     ctx.textAlign = 'center'; ctx.font = 'bold 19px sans-serif';
     ctx.fillStyle = serveFlash > 0 ? '#ff3b78' : 'rgba(120,60,90,0.85)';
-    ctx.fillText(serveFlash > 0 ? '🎉 Harika tatlı! 🎉' : 'Renk seç · keke dokun · servis et', W / 2, 96);
+    ctx.fillText(serveFlash > 0 ? '🎉 Yummy! 🎉' : 'Pick color · tap to decorate · serve', W / 2, 96);
     // Toast
     if (toastFx > 0 && toast) {
       ctx.globalAlpha = Math.min(1, toastFx / 25);
