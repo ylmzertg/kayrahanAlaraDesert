@@ -109,6 +109,8 @@
   let tool = 'strawberry';      // seçili süs
   let order = null;             // müşteri siparişi { base, topping }
   let custSeed = 0;             // müşteri görünüş çeşitliliği
+  let creamBlobs = [];          // sürükleyerek sıkılan krema (her biri {x,y,r,col})
+  let mode = 'cream';           // 'cream' (krema sık) | 'topping' (süs koy)
   let placed = [];              // [{type,x,y,rot,col}]
   let confetti = [];
   let toast = null, toastFx = 0;
@@ -136,9 +138,9 @@
   const inFrost = (p) => { const F = frostRegion(); return ((p.x - F.cx) ** 2) / (F.rx ** 2) + ((p.y - F.cy) ** 2) / (F.ry ** 2) <= 1; };
 
   function selectTopping(it) {
-    if (it.free || unlocked[it.id]) { tool = it.id; Sound.pick(); Haptics.buzz(8); return; }
+    if (it.free || unlocked[it.id]) { tool = it.id; mode = 'topping'; Sound.pick(); Haptics.buzz(8); return; }
     // kilitli → satın al
-    if (coins >= it.price) { coins -= it.price; unlocked[it.id] = true; tool = it.id; Sound.buy(); Haptics.buzz([15, 30, 15]); showToast('New topping unlocked!'); save(); }
+    if (coins >= it.price) { coins -= it.price; unlocked[it.id] = true; tool = it.id; mode = 'topping'; Sound.buy(); Haptics.buzz([15, 30, 15]); showToast('New topping unlocked!'); save(); }
     else { Sound.nope(); Haptics.buzz(30); showToast('Need ' + it.price + ' 🪙'); }
   }
 
@@ -176,27 +178,40 @@
     for (let i = 0; i < 40; i++) confetti.push({ x: 270 + (Math.random() * 200 - 100), y: 340, vx: (Math.random() * 6 - 3), vy: -(2 + Math.random() * 6), life: 1, decay: 0.012 + Math.random() * 0.01, c: ['#ff5d73', '#ffd23f', '#5fd068', '#7c5cff', '#5ec5ff', '#ff8fb3'][i % 6], r: 4 + Math.random() * 4 });
     SDK.sendScore(served);
     save();
-    setTimeout(() => { placed = []; newOrder(); }, 650);  // kutlamadan sonra yeni sipariş
+    setTimeout(() => { placed = []; creamBlobs = []; newOrder(); }, 650);  // kutlamadan sonra yeni sipariş
   }
 
+  // Tatlının üstüne uygula: krema modunda krema sık, süs modunda süs koy.
+  // Kare sayacına değil, MESAFEYE göre throttle → her ortamda akıcı.
+  let lastApply = null;
+  function applyAt(p) {
+    if (!inFrost(p)) return;
+    const far = !lastApply || ((p.x - lastApply.x) ** 2 + (p.y - lastApply.y) ** 2);
+    if (mode === 'cream') {
+      if (lastApply && far < 11 * 11) return;
+      if (creamBlobs.length < 260) { creamBlobs.push({ x: p.x, y: p.y, r: 19, col: frosting }); Haptics.buzz(4); lastApply = { x: p.x, y: p.y }; }
+    } else {
+      if (creamBlobs.length === 0) { showToast('Add cream first! 🍦'); Sound.nope(); return; }
+      if (lastApply && far < 24 * 24) return;
+      placeTopping(p); lastApply = { x: p.x, y: p.y };
+    }
+  }
+
+  let drawingBase = false;
   canvas.addEventListener('pointerdown', (e) => {
     Sound.unlock(); applyAudio();
     const p = cpoint(e);
     if (inBox(p, soundBtn))  { soundOn = !soundOn; applyAudio(); Haptics.buzz(10); save(); return; }
     if (inBox(p, hapticBtn)) { hapticsOn = !hapticsOn; Haptics.setEnabled(hapticsOn); if (hapticsOn) Haptics.buzz(20); save(); return; }
     if (inBox(p, serveBtn))  { serve(); return; }
-    if (inBox(p, clearBtn))  { if (placed.length) { placed = []; Sound.pick(); } return; }
-    for (let i = 0; i < BASES.length; i++) if (inBox(p, baseRect(i))) { if (base !== BASES[i].id) { base = BASES[i].id; placed = []; } Sound.pick(); Haptics.buzz(8); return; }
-    for (let i = 0; i < COLORS.length; i++) if (inBox(p, colorRect(i))) { frosting = COLORS[i].c; Sound.pick(); Haptics.buzz(8); return; }
+    if (inBox(p, clearBtn))  { if (placed.length || creamBlobs.length) { placed = []; creamBlobs = []; Sound.pick(); } return; }
+    for (let i = 0; i < BASES.length; i++) if (inBox(p, baseRect(i))) { if (base !== BASES[i].id) { base = BASES[i].id; placed = []; creamBlobs = []; } Sound.pick(); Haptics.buzz(8); return; }
+    for (let i = 0; i < COLORS.length; i++) if (inBox(p, colorRect(i))) { frosting = COLORS[i].c; mode = 'cream'; Sound.pick(); Haptics.buzz(8); return; }
     for (let i = 0; i < TOPPINGS.length; i++) if (inBox(p, topRect(i))) { selectTopping(TOPPINGS[i]); return; }
-    if (inFrost(p)) placeTopping(p);
+    if (inFrost(p)) { drawingBase = true; lastApply = null; if (mode === 'cream') Sound.pick(); applyAt(p); }
   });
-
-  // sürükleyerek de süs serpebilmek için (basılıyken hareket)
-  let dragging = false;
-  canvas.addEventListener('pointerdown', (e) => { const p = cpoint(e); dragging = inFrost(p); });
-  canvas.addEventListener('pointermove', (e) => { if (!dragging) return; const p = cpoint(e); if (inFrost(p) && tms % 3 === 0) placeTopping(p); });
-  addEventListener('pointerup', () => { dragging = false; });
+  canvas.addEventListener('pointermove', (e) => { if (!drawingBase) return; applyAt(cpoint(e)); });
+  addEventListener('pointerup', () => { drawingBase = false; lastApply = null; });
 
   // --- 8) Güncelleme ---
   function update() {
@@ -250,45 +265,49 @@
   function drawCupcake() {
     const cx = CAKE.cx;
     drawPlate();
+    // Kalıp (wrapper)
     ctx.fillStyle = '#e6a23c';
     ctx.beginPath(); ctx.moveTo(cx - 92, 410); ctx.lineTo(cx + 92, 410); ctx.lineTo(cx + 74, CAKE.plateY - 4); ctx.lineTo(cx - 74, CAKE.plateY - 4); ctx.closePath(); ctx.fill();
     ctx.fillStyle = 'rgba(0,0,0,0.08)';
     for (let i = -3; i <= 3; i++) ctx.fillRect(cx + i * 24 - 3, 410, 6, 96);
-    ctx.fillStyle = frosting;
-    ctx.beginPath(); ctx.moveTo(cx - 104, 414);
-    ctx.quadraticCurveTo(cx - 120, 320, cx - 50, 300);
-    ctx.quadraticCurveTo(cx, 250, cx + 50, 300);
-    ctx.quadraticCurveTo(cx + 120, 320, cx + 104, 414);
+    // Pişmiş kek tepesi (nötr renk — krema oyuncu tarafından sıkılır)
+    ctx.fillStyle = '#e0b070';
+    ctx.beginPath(); ctx.moveTo(cx - 100, 414);
+    ctx.quadraticCurveTo(cx - 110, 362, cx - 50, 346);
+    ctx.quadraticCurveTo(cx, 330, cx + 50, 346);
+    ctx.quadraticCurveTo(cx + 110, 362, cx + 100, 414);
     ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.ellipse(cx - 30, 330, 40, 22, -0.4, 0, 7); ctx.fill();
-    ctx.fillStyle = frosting; ctx.beginPath(); ctx.arc(cx, 286, 16, 0, 7); ctx.fill();
   }
 
   function drawIce() {
     const cx = CAKE.cx;
-    // Külah (waffle)
+    // Külah (waffle) — top oyuncunun sıktığı krema
     ctx.fillStyle = '#d99a4e';
     ctx.beginPath(); ctx.moveTo(cx - 56, 372); ctx.lineTo(cx + 56, 372); ctx.lineTo(cx, 500); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = 'rgba(120,70,20,0.35)'; ctx.lineWidth = 2;
     for (let i = -2; i <= 4; i++) { ctx.beginPath(); ctx.moveTo(cx - 56 + i * 22, 372); ctx.lineTo(cx, 500); ctx.stroke(); ctx.beginPath(); ctx.moveTo(cx + 56 - i * 22, 372); ctx.lineTo(cx, 500); ctx.stroke(); }
-    // Dondurma topu (krema rengi) — bulutsu
-    ctx.fillStyle = frosting;
-    ctx.beginPath(); ctx.arc(cx - 34, 350, 46, 0, 7); ctx.arc(cx + 34, 350, 46, 0, 7); ctx.arc(cx, 312, 52, 0, 7); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(cx, 372, 64, 26, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.ellipse(cx - 20, 322, 26, 16, -0.4, 0, 7); ctx.fill();
+    ctx.fillStyle = '#e9c79a'; ctx.beginPath(); ctx.ellipse(cx, 372, 58, 16, 0, 0, 7); ctx.fill();
   }
 
   function drawCookie() {
     const cx = CAKE.cx;
     drawPlate();
-    // Kurabiye
+    // Kurabiye (krema/sos oyuncu tarafından sıkılır)
     ctx.fillStyle = '#d8a25a'; ctx.beginPath(); ctx.arc(cx, 400, 108, 0, 7); ctx.fill();
-    ctx.fillStyle = '#c08a42'; ctx.beginPath(); ctx.arc(cx, 400, 108, 0, 7); ctx.lineWidth = 6; ctx.strokeStyle = '#c08a42'; ctx.stroke();
+    ctx.lineWidth = 6; ctx.strokeStyle = '#c08a42'; ctx.beginPath(); ctx.arc(cx, 400, 108, 0, 7); ctx.stroke();
     ctx.fillStyle = '#5a3a1a';
-    [[-40, 430], [44, 412], [10, 452], [-58, 386]].forEach(p => { ctx.beginPath(); ctx.arc(cx + p[0], p[1], 7, 0, 7); ctx.fill(); });
-    // Üst krema (krema rengi)
-    ctx.fillStyle = frosting; ctx.beginPath(); ctx.ellipse(cx, 372, 100, 50, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.ellipse(cx - 30, 360, 34, 16, -0.3, 0, 7); ctx.fill();
+    [[-40, 430], [44, 412], [10, 452], [-58, 386], [50, 450]].forEach(p => { ctx.beginPath(); ctx.arc(cx + p[0], p[1], 7, 0, 7); ctx.fill(); });
+  }
+
+  // Sıkılan krema — üst üste binen daireler tek bir krema kütlesi gibi görünür.
+  function drawCream() {
+    for (const b of creamBlobs) { ctx.fillStyle = b.col; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.fill(); }
+    // üstte hafif parlama
+    if (creamBlobs.length) {
+      ctx.globalAlpha = 0.18; ctx.fillStyle = '#fff';
+      for (const b of creamBlobs) { ctx.beginPath(); ctx.arc(b.x - 5, b.y - 6, b.r * 0.5, 0, 7); ctx.fill(); }
+      ctx.globalAlpha = 1;
+    }
   }
 
   function drawBase() {
@@ -371,7 +390,7 @@
     // Hint / celebration
     ctx.textAlign = 'center'; ctx.font = 'bold 19px sans-serif';
     ctx.fillStyle = serveFlash > 0 ? '#ff3b78' : 'rgba(120,60,90,0.85)';
-    ctx.fillText(serveFlash > 0 ? '🎉 Yummy! 🎉' : 'Pick color · tap to decorate · serve', W / 2, 96);
+    ctx.fillText(serveFlash > 0 ? '🎉 Yummy! 🎉' : 'Squeeze cream · add toppings · serve', W / 2, 96);
     // Toast
     if (toastFx > 0 && toast) {
       ctx.globalAlpha = Math.min(1, toastFx / 25);
@@ -416,6 +435,7 @@
     // şef Kayrahan (köşe)
     if (heroLoaded) { const ar = hero.naturalWidth / hero.naturalHeight || 1, dh = 150, dw = dh * ar; ctx.globalAlpha = 0.95; ctx.drawImage(hero, 8, 150 - 0, dw, dh); ctx.globalAlpha = 1; }
     drawBase();
+    drawCream();
     for (const s of placed) drawTopping(s.type, s.x, s.y, s.rot, s.col);
     drawConfetti();
     drawBaseSelect();
