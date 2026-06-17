@@ -95,7 +95,9 @@
     { id: 'choco',      free: true },
     { id: 'sprinkle',   free: true },
     { id: 'heart',      free: true },
+    { id: 'banana',     free: true },
     { id: 'cherry',     price: 15 },
+    { id: 'blueberry',  price: 20 },
     { id: 'star',       price: 30 },
   ];
 
@@ -130,7 +132,7 @@
   const clearBtn  = { x: W - 76, y: 700, w: 60, h: 56 };
   const syrupBtn  = { x: W - 146, y: 700, w: 60, h: 56 };   // sos (seçili renkte) modu
   function colorRect(i) { const sw = 58, gap = 14, total = COLORS.length * sw + (COLORS.length - 1) * gap; const x0 = (W - total) / 2; return { x: x0 + i * (sw + gap), y: 520, w: sw, h: 58 }; }
-  function topRect(i)   { const sw = 70, gap = 12, total = TOPPINGS.length * sw + (TOPPINGS.length - 1) * gap; const x0 = (W - total) / 2; return { x: x0 + i * (sw + gap), y: 612, w: sw, h: 70 }; }
+  function topRect(i)   { const n = TOPPINGS.length, gap = 8, sw = Math.min(64, (W - 44 - (n - 1) * gap) / n), total = n * sw + (n - 1) * gap, x0 = (W - total) / 2; return { x: x0 + i * (sw + gap), y: 612, w: sw, h: 70 }; }
   function baseRect(i)  { return { x: W - 70, y: 200 + i * 82, w: 58, h: 70 }; }   // sağda tatlı seçim sütunu
 
   // --- 7) Girdi ---
@@ -265,6 +267,16 @@
         for (let i = 0; i < 10; i++) { const r = i % 2 ? 5 : 11, a = -Math.PI / 2 + i * Math.PI / 5; const px = Math.cos(a) * r, py = Math.sin(a) * r; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
         ctx.closePath(); ctx.fill(); ctx.stroke();
         break;
+      case 'banana':
+        ctx.fillStyle = '#ffd54a'; ctx.strokeStyle = '#e0a500'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(-13, -7); ctx.quadraticCurveTo(2, 16, 15, -5); ctx.quadraticCurveTo(3, 9, -13, -7); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#6b4a1a'; ctx.beginPath(); ctx.arc(-13, -7, 1.6, 0, 7); ctx.fill();
+        break;
+      case 'blueberry':
+        ctx.fillStyle = '#4f6bd4'; ctx.beginPath(); ctx.arc(0, 0, 8, 0, 7); ctx.fill();
+        ctx.fillStyle = '#2e3f8f'; for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * 1.25; ctx.beginPath(); ctx.arc(Math.cos(a) * 2.5, -2 + Math.sin(a) * 2.5, 1, 0, 7); ctx.fill(); }
+        ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.arc(-3, 3, 2, 0, 7); ctx.fill();
+        break;
       case 'sprinkle':
         ctx.fillStyle = col || '#ff5d73'; roundRect(-5, -2, 10, 4, 2); ctx.fill();
         break;
@@ -367,7 +379,7 @@
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   }
 
-  function iconForTopping(id) { return { strawberry: '🍓', choco: '🍫', sprinkle: '🌈', heart: '❤️', cherry: '🍒', star: '⭐' }[id]; }
+  function iconForTopping(id) { return { strawberry: '🍓', choco: '🍫', sprinkle: '🌈', heart: '❤️', banana: '🍌', cherry: '🍒', blueberry: '🫐', star: '⭐' }[id]; }
 
   function drawPalettes() {
     // Krema renkleri
@@ -384,8 +396,8 @@
       ctx.fillStyle = sel ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.12)'; roundRect(r.x, r.y, r.w, r.h, 12); ctx.fill();
       if (sel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; roundRect(r.x, r.y, r.w, r.h, 12); ctx.stroke(); }
       ctx.globalAlpha = have ? 1 : 0.6;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '34px sans-serif'; ctx.fillStyle = '#fff';
-      ctx.fillText(iconForTopping(it.id), r.x + r.w / 2, r.y + 32);
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '30px sans-serif'; ctx.fillStyle = '#fff';
+      ctx.fillText(iconForTopping(it.id), r.x + r.w / 2, r.y + 30);
       if (!have) {
         ctx.font = 'bold 15px sans-serif'; ctx.fillStyle = '#ffd23f'; ctx.fillText('🔒' + it.price, r.x + r.w / 2, r.y + 58);
       }
