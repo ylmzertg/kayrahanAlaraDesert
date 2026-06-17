@@ -70,6 +70,9 @@
   addEventListener('resize', resize); resize();
 
   const hero = new Image(); let heroLoaded = false; hero.onload = () => { heroLoaded = true; }; hero.src = 'assets/hero.png';
+  const alaraImg = new Image(); let alaraLoaded = false; alaraImg.onload = () => { alaraLoaded = true; }; alaraImg.src = 'assets/alara.png';
+  // Seçili şef görseli (yüklüyse) — yoksa null
+  function chefImg() { return character === 'alara' ? (alaraLoaded ? alaraImg : null) : (heroLoaded ? hero : null); }
 
   // --- 4) İçerik tanımı ---
   const CAKE = { cx: 270, plateY: 470 };
@@ -111,6 +114,8 @@
   let tool = 'strawberry';      // seçili süs
   let order = null;             // müşteri siparişi { base, topping }
   let custSeed = 0;             // müşteri görünüş çeşitliliği
+  let screen = 'select';        // 'select' (karakter seç) | 'play'
+  let character = 'kayrahan';   // seçili karakter: 'kayrahan' | 'alara'
   let creamBlobs = [];          // sürükleyerek sıkılan krema (her biri {x,y,r,col})
   let drizzles = [];            // şurup çizgileri [{col, pts:[{x,y}]}]
   let mode = 'cream';           // 'cream' (krema sık) | 'syrup' (sos çek) | 'topping' (süs koy)
@@ -122,7 +127,7 @@
   let firstFrameSent = false;
 
   function applyAudio() { Sound.setMuted(!soundOn || !SDK.audioEnabled()); }
-  function save() { SDK.saveData({ coins, served, unlocked, soundOn, hapticsOn }); }
+  function save() { SDK.saveData({ coins, served, unlocked, soundOn, hapticsOn, character }); }
   function showToast(txt) { toast = txt; toastFx = 90; }
 
   // --- 6) Tıklanabilir bölgeler ---
@@ -131,6 +136,7 @@
   const serveBtn  = { x: W / 2 - 150, y: 770, w: 300, h: 74 };
   const clearBtn  = { x: W - 76, y: 700, w: 60, h: 56 };
   const syrupBtn  = { x: W - 146, y: 700, w: 60, h: 56 };   // sos (seçili renkte) modu
+  function cardRect(i) { return { x: 50 + i * 250, y: 300, w: 190, h: 330 }; }   // karakter seçim kartları
   function colorRect(i) { const sw = 58, gap = 14, total = COLORS.length * sw + (COLORS.length - 1) * gap; const x0 = (W - total) / 2; return { x: x0 + i * (sw + gap), y: 520, w: sw, h: 58 }; }
   function topRect(i)   { const n = TOPPINGS.length, gap = 8, sw = Math.min(64, (W - 44 - (n - 1) * gap) / n), total = n * sw + (n - 1) * gap, x0 = (W - total) / 2; return { x: x0 + i * (sw + gap), y: 612, w: sw, h: 70 }; }
   function baseRect(i)  { return { x: W - 70, y: 200 + i * 82, w: 58, h: 70 }; }   // sağda tatlı seçim sütunu
@@ -205,6 +211,11 @@
   canvas.addEventListener('pointerdown', (e) => {
     Sound.unlock(); applyAudio();
     const p = cpoint(e);
+    // Karakter seçim ekranı
+    if (screen === 'select') {
+      for (let i = 0; i < 2; i++) if (inBox(p, cardRect(i))) { character = i === 0 ? 'kayrahan' : 'alara'; screen = 'play'; Sound.buy(); Haptics.buzz(20); save(); return; }
+      return;
+    }
     if (inBox(p, soundBtn))  { soundOn = !soundOn; applyAudio(); Haptics.buzz(10); save(); return; }
     if (inBox(p, hapticBtn)) { hapticsOn = !hapticsOn; Haptics.setEnabled(hapticsOn); if (hapticsOn) Haptics.buzz(20); save(); return; }
     if (inBox(p, serveBtn))  { serve(); return; }
@@ -476,13 +487,43 @@
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   }
 
+  function drawCharCard(b, name, img, ok) {
+    ctx.fillStyle = 'rgba(255,255,255,0.92)'; roundRect(b.x, b.y, b.w, b.h, 22); ctx.fill();
+    ctx.strokeStyle = '#ff9ec0'; ctx.lineWidth = 4; roundRect(b.x, b.y, b.w, b.h, 22); ctx.stroke();
+    if (ok) {
+      const ar = img.naturalWidth / img.naturalHeight || 1, dh = b.h - 96, dw = dh * ar;
+      ctx.drawImage(img, b.x + b.w / 2 - dw / 2, b.y + 28, dw, dh);
+    } else {
+      ctx.fillStyle = '#dcc6d2'; ctx.beginPath(); ctx.arc(b.x + b.w / 2, b.y + 110, 46, 0, 7); ctx.fill();
+      roundRect(b.x + b.w / 2 - 46, b.y + 150, 92, 128, 22); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 56px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('?', b.x + b.w / 2, b.y + 110);
+    }
+    ctx.fillStyle = '#7a3b55'; ctx.font = 'bold 26px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(name, b.x + b.w / 2, b.y + b.h - 26);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  }
+
+  function drawSelect() {
+    ctx.fillStyle = '#ffd9e6'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#ffe9f1'; ctx.fillRect(0, 660, W, H - 660);
+    ctx.fillStyle = '#7a3b55'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = 'bold 40px sans-serif'; ctx.fillText('🧁 Dessert Shop', W / 2, 120);
+    ctx.font = 'bold 26px sans-serif'; ctx.fillText('Choose your chef', W / 2, 182);
+    drawCharCard(cardRect(0), 'Kayrahan', hero, heroLoaded);
+    drawCharCard(cardRect(1), 'Alara', alaraImg, alaraLoaded);
+    if (Math.floor(tms / 30) % 2 === 0) { ctx.fillStyle = '#a05070'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('👆 Tap a character', W / 2, 700); }
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  }
+
   function render() {
     ctx.clearRect(0, 0, W, H);
+    if (screen === 'select') { drawSelect(); return; }
     // arka plan zemin
     ctx.fillStyle = '#ffd9e6'; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = '#ffe9f1'; ctx.fillRect(0, 470, W, H - 470);
-    // şef Kayrahan (köşe)
-    if (heroLoaded) { const ar = hero.naturalWidth / hero.naturalHeight || 1, dh = 150, dw = dh * ar; ctx.globalAlpha = 0.95; ctx.drawImage(hero, 8, 150 - 0, dw, dh); ctx.globalAlpha = 1; }
+    // şef (seçili karakter, köşe)
+    const ci = chefImg();
+    if (ci) { const ar = ci.naturalWidth / ci.naturalHeight || 1, dh = 150, dw = dh * ar; ctx.globalAlpha = 0.95; ctx.drawImage(ci, 8, 150, dw, dh); ctx.globalAlpha = 1; }
     drawBase();
     drawCream();
     drawDrizzle();
@@ -510,6 +551,7 @@
       if (s.unlocked) unlocked = Object.assign(unlocked, s.unlocked);
       if (s.soundOn === false) soundOn = false;
       if (s.hapticsOn === false) hapticsOn = false;
+      if (s.character === 'alara' || s.character === 'kayrahan') character = s.character;
     }
     Haptics.setEnabled(hapticsOn); applyAudio();
     SDK.onAudioEnabledChange(() => applyAudio());
