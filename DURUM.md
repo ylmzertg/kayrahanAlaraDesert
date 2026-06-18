@@ -24,14 +24,14 @@ Açılışta **Kayrahan** (`assets/hero.png`) veya **Alara** (`assets/alara.png`
 - Şurup/sos çizme (seçili renkte, sürükleyerek)
 - 8 süs: çilek, çikolata, gökkuşağı şeker, kalp, muz (ücretsiz) + kiraz(15), yaban mersini(20), yıldız(30) kilitli
 - 3 tatlı çeşidi: kek 🧁 / dondurma 🍦 / kurabiye 🍪 (sağdan seçilir)
-- 5 krema rengi; servis → para; parayla kilit açma
+- 8 krema rengi (pembe/çikolata/vanilya/nane/mavi/mor/kırmızı/beyaz); servis → para; parayla kilit açma
+- 5 tatlı çeşidi: kek/dondurma/kurabiye/donut/pasta dilimi
 - Ses efektleri + titreşim + ikisi için aç/kapa; `sendScore`; İngilizce arayüz
 - Kalıcılık: `saveData` SDK **+ localStorage çift-yazma**
 
 ## ⏳ Kalan yol haritası (sırayla)
-- **Faz 3.3** — Yeni tatlı çeşitleri: donut, popsicle (buzlu çubuk), pasta dilimi (yeni şekil + krema bölgesi + sağ sütuna ekleme)
-- **Faz 3.4** — Ek krema renkleri
-- **Faz 4** — Dükkân yükseltme/süsleme meta'sı (parayla; retention)
+- ~~Faz 3.1 sos · 3.2 yeni süsler · 3.3 yeni çeşitler (donut/dilim) · 3.4 ek renkler~~ ✅ TAMAM
+- **Faz 4** — Dükkân yükseltme/süsleme meta'sı (parayla; retention) ← SIRADAKİ
 - **Faz 5** — Cila: müşteri tepkileri, yıldız puan, arka plan müziği, paylaş
 (Detaylı analiz + karar: `youtubeOrnekOyunlar.md`)
 
