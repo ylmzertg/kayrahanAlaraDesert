@@ -133,6 +133,9 @@
   let firstFrameSent = false;
 
   function applyAudio() { Sound.setMuted(!soundOn || !SDK.audioEnabled()); }
+  // İlk servisten sonra gelişmiş özellikler açılır (kademeli açılım). Kalıcı (served kaydedilir).
+  function revealed() { return served >= 1; }
+  function visTop() { return revealed() ? TOPPINGS.length : 5; }   // başta sadece 5 ücretsiz süs
   function save() { SDK.saveData({ coins, served, unlocked, soundOn, hapticsOn, character, shopOwned }); }
   function showToast(txt) { toast = txt; toastFx = 90; }
 
@@ -155,7 +158,7 @@
   const shopClose = { x: W - 58, y: 16, w: 46, h: 46 };       // shop ekranında kapat
   function shopCard(i) { const n = SHOP.length, gap = 12, cw = (W - 32 - gap * (n - 1)) / n, x0 = 16; return { x: x0 + i * (cw + gap), y: 800, w: cw, h: 110 }; }
   function colorRect(i) { const n = COLORS.length, gap = 10, sw = Math.min(58, (W - 44 - (n - 1) * gap) / n), total = n * sw + (n - 1) * gap, x0 = (W - total) / 2; return { x: x0 + i * (sw + gap), y: 520, w: sw, h: 58 }; }
-  function topRect(i)   { const n = TOPPINGS.length, gap = 8, sw = Math.min(64, (W - 44 - (n - 1) * gap) / n), total = n * sw + (n - 1) * gap, x0 = (W - total) / 2; return { x: x0 + i * (sw + gap), y: 612, w: sw, h: 70 }; }
+  function topRect(i)   { const n = visTop(), gap = 8, sw = Math.min(64, (W - 44 - (n - 1) * gap) / n), total = n * sw + (n - 1) * gap, x0 = (W - total) / 2; return { x: x0 + i * (sw + gap), y: 612, w: sw, h: 70 }; }
   function baseRect(i)  { return { x: W - 70, y: 200 + i * 82, w: 58, h: 70 }; }   // sağda tatlı seçim sütunu
 
   // --- 7) Girdi ---
@@ -245,15 +248,15 @@
       }
       return;
     }
-    if (inBox(p, shopBtn))   { screen = 'shop'; Sound.pick(); Haptics.buzz(8); return; }
+    if (revealed() && inBox(p, shopBtn)) { screen = 'shop'; Sound.pick(); Haptics.buzz(8); return; }
     if (inBox(p, soundBtn))  { soundOn = !soundOn; applyAudio(); Haptics.buzz(10); save(); return; }
     if (inBox(p, hapticBtn)) { hapticsOn = !hapticsOn; Haptics.setEnabled(hapticsOn); if (hapticsOn) Haptics.buzz(20); save(); return; }
     if (inBox(p, serveBtn))  { serve(); return; }
     if (inBox(p, clearBtn))  { if (placed.length || creamBlobs.length || drizzles.length) { placed = []; creamBlobs = []; drizzles = []; Sound.pick(); } return; }
-    if (inBox(p, syrupBtn))  { mode = 'syrup'; Sound.pick(); Haptics.buzz(8); return; }
+    if (revealed() && inBox(p, syrupBtn)) { mode = 'syrup'; Sound.pick(); Haptics.buzz(8); return; }
     for (let i = 0; i < BASES.length; i++) if (inBox(p, baseRect(i))) { if (base !== BASES[i].id) { base = BASES[i].id; placed = []; creamBlobs = []; drizzles = []; } Sound.pick(); Haptics.buzz(8); return; }
     for (let i = 0; i < COLORS.length; i++) if (inBox(p, colorRect(i))) { frosting = COLORS[i].c; if (mode !== 'syrup') mode = 'cream'; Sound.pick(); Haptics.buzz(8); return; }
-    for (let i = 0; i < TOPPINGS.length; i++) if (inBox(p, topRect(i))) { selectTopping(TOPPINGS[i]); return; }
+    for (let i = 0; i < visTop(); i++) if (inBox(p, topRect(i))) { selectTopping(TOPPINGS[i]); return; }
     if (inFrost(p)) {
       drawingBase = true; lastApply = null;
       if (mode === 'syrup') { drizzles.push({ col: frosting, pts: [{ x: p.x, y: p.y }] }); Sound.pick(); }
@@ -457,7 +460,7 @@
     }
     // Süsler
     ctx.fillStyle = 'rgba(0,0,0,0.30)'; roundRect(20, 600, W - 40, 94, 14); ctx.fill();
-    for (let i = 0; i < TOPPINGS.length; i++) {
+    for (let i = 0; i < visTop(); i++) {
       const it = TOPPINGS[i], r = topRect(i), have = it.free || unlocked[it.id], sel = tool === it.id;
       ctx.fillStyle = sel ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.12)'; roundRect(r.x, r.y, r.w, r.h, 12); ctx.fill();
       if (sel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; roundRect(r.x, r.y, r.w, r.h, 12); ctx.stroke(); }
@@ -481,14 +484,16 @@
     // Temizle
     ctx.fillStyle = 'rgba(0,0,0,0.35)'; roundRect(clearBtn.x, clearBtn.y, clearBtn.w, clearBtn.h, 12); ctx.fill();
     ctx.font = '28px sans-serif'; ctx.fillText('🧽', clearBtn.x + clearBtn.w / 2, clearBtn.y + clearBtn.h / 2 + 1);
-    // Sos (seçili renkte dalgalı çizgi)
-    const sel = mode === 'syrup';
-    ctx.fillStyle = sel ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.35)';
-    roundRect(syrupBtn.x, syrupBtn.y, syrupBtn.w, syrupBtn.h, 12); ctx.fill();
-    if (sel) { ctx.strokeStyle = '#ff5d8f'; ctx.lineWidth = 3; roundRect(syrupBtn.x, syrupBtn.y, syrupBtn.w, syrupBtn.h, 12); ctx.stroke(); }
-    ctx.strokeStyle = frosting; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    const bx = syrupBtn.x + 12, by = syrupBtn.y + syrupBtn.h / 2;
-    ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(bx + 12, by - 14, bx + 18, by); ctx.quadraticCurveTo(bx + 24, by + 14, bx + 36, by); ctx.stroke();
+    // Sos (seçili renkte dalgalı çizgi) — ilk servisten sonra görünür
+    if (revealed()) {
+      const sel = mode === 'syrup';
+      ctx.fillStyle = sel ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.35)';
+      roundRect(syrupBtn.x, syrupBtn.y, syrupBtn.w, syrupBtn.h, 12); ctx.fill();
+      if (sel) { ctx.strokeStyle = '#ff5d8f'; ctx.lineWidth = 3; roundRect(syrupBtn.x, syrupBtn.y, syrupBtn.w, syrupBtn.h, 12); ctx.stroke(); }
+      ctx.strokeStyle = frosting; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      const bx = syrupBtn.x + 12, by = syrupBtn.y + syrupBtn.h / 2;
+      ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(bx + 12, by - 14, bx + 18, by); ctx.quadraticCurveTo(bx + 24, by + 14, bx + 36, by); ctx.stroke();
+    }
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   }
 
@@ -502,14 +507,16 @@
     ctx.fillStyle = '#fff'; ctx.font = 'bold 19px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Dessert Shop', W / 2, 37);
     ctx.textAlign = 'left';
     drawToggle(soundBtn, '🔊', soundOn); drawToggle(hapticBtn, '📳', hapticsOn);
-    // Shop butonu (sol, coins altı)
-    ctx.fillStyle = 'rgba(120,60,90,0.55)'; roundRect(shopBtn.x, shopBtn.y, shopBtn.w, shopBtn.h, 12); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('🛍️ Shop', shopBtn.x + shopBtn.w / 2, shopBtn.y + shopBtn.h / 2);
-    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    // Shop butonu (sol, coins altı) — ilk servisten sonra görünür
+    if (revealed()) {
+      ctx.fillStyle = 'rgba(120,60,90,0.55)'; roundRect(shopBtn.x, shopBtn.y, shopBtn.w, shopBtn.h, 12); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('🛍️ Shop', shopBtn.x + shopBtn.w / 2, shopBtn.y + shopBtn.h / 2);
+      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    }
     // Hint / celebration
     ctx.textAlign = 'center'; ctx.font = 'bold 19px sans-serif';
     ctx.fillStyle = serveFlash > 0 ? '#ff3b78' : 'rgba(120,60,90,0.85)';
-    ctx.fillText(serveFlash > 0 ? '🎉 Yummy! 🎉' : 'Squeeze cream · add toppings · serve', W / 2, 96);
+    ctx.fillText(serveFlash > 0 ? '🎉 Yummy! 🎉' : (tutorMsg() || 'Squeeze cream · add toppings · serve'), W / 2, 96);
     // Toast
     if (toastFx > 0 && toast) {
       ctx.globalAlpha = Math.min(1, toastFx / 25);
@@ -620,6 +627,25 @@
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   }
 
+  // İlk oyun yönlendirmesi (served===0): hangi adımdayız?
+  function tutorMsg() {
+    if (revealed()) return null;
+    if (creamBlobs.length === 0) return '👇 Drag on the cake to squeeze cream';
+    if (placed.length === 0) return '👇 Pick a topping, then tap the cake';
+    return '👇 Now tap Serve!';
+  }
+  function drawTutorial() {
+    if (revealed() || screen !== 'play') return;
+    let tx, ty;
+    if (creamBlobs.length === 0) { const F = FROST_BY_BASE[base]; tx = F.cx; ty = F.cy - 30; }
+    else if (placed.length === 0) { const r = topRect(0); tx = r.x + r.w / 2; ty = r.y - 18; }
+    else { tx = serveBtn.x + serveBtn.w / 2; ty = serveBtn.y - 16; }
+    const bob = Math.abs(Math.sin(tms * 0.12)) * 12;
+    ctx.font = '36px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('👇', tx, ty - bob);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  }
+
   function render() {
     ctx.clearRect(0, 0, W, H);
     if (screen === 'select') { drawSelect(); return; }
@@ -640,6 +666,7 @@
     drawButtons();
     drawHUD();
     drawOrder();
+    drawTutorial();
   }
 
   function loop() {
