@@ -76,12 +76,14 @@
 
   // --- 4) İçerik tanımı ---
   const CAKE = { cx: 270, plateY: 470 };
-  const BASES = [{ id: 'cupcake', icon: '🧁' }, { id: 'ice', icon: '🍦' }, { id: 'cookie', icon: '🍪' }];
+  const BASES = [{ id: 'cupcake', icon: '🧁' }, { id: 'ice', icon: '🍦' }, { id: 'cookie', icon: '🍪' }, { id: 'donut', icon: '🍩' }, { id: 'slice', icon: '🍰' }];
   // Her tatlı için süs yerleştirme (krema) elipsi
   const FROST_BY_BASE = {
     cupcake: { cx: 270, cy: 360, rx: 108, ry: 78 },
     ice:     { cx: 270, cy: 332, rx: 82,  ry: 74 },
     cookie:  { cx: 270, cy: 384, rx: 104, ry: 54 },
+    donut:   { cx: 270, cy: 350, rx: 100, ry: 44 },
+    slice:   { cx: 270, cy: 338, rx: 96,  ry: 52 },
   };
 
   const COLORS = [
@@ -362,9 +364,34 @@
     }
   }
 
+  function drawDonut() {
+    const cx = CAKE.cx;
+    drawPlate();
+    // Halka (hamur)
+    ctx.fillStyle = '#caa06a'; ctx.beginPath(); ctx.ellipse(cx, 392, 108, 94, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#b8895180'; ctx.beginPath(); ctx.ellipse(cx, 392, 108, 94, 0, 0, 7); ctx.lineWidth = 4; ctx.strokeStyle = '#a9794a'; ctx.stroke();
+    // Delik (arka plan rengi)
+    ctx.fillStyle = '#ffd9e6'; ctx.beginPath(); ctx.ellipse(cx, 404, 40, 34, 0, 0, 7); ctx.fill();
+  }
+
+  function drawSlice() {
+    const cx = CAKE.cx;
+    drawPlate();
+    // Pasta dilimi (yandan) — sünger + krema katmanı
+    ctx.fillStyle = '#f0c27b';
+    ctx.beginPath(); ctx.moveTo(cx - 96, 468); ctx.lineTo(cx + 96, 468); ctx.lineTo(cx + 96, 332); ctx.lineTo(cx - 96, 360); ctx.closePath(); ctx.fill();
+    // krema dolgu çizgisi
+    ctx.fillStyle = '#fff1d6';
+    ctx.beginPath(); ctx.moveTo(cx - 96, 412); ctx.lineTo(cx + 96, 392); ctx.lineTo(cx + 96, 406); ctx.lineTo(cx - 96, 426); ctx.closePath(); ctx.fill();
+    // alt kenar gölge
+    ctx.fillStyle = 'rgba(0,0,0,0.06)'; ctx.fillRect(cx - 96, 458, 192, 10);
+  }
+
   function drawBase() {
     if (base === 'ice') drawIce();
     else if (base === 'cookie') drawCookie();
+    else if (base === 'donut') drawDonut();
+    else if (base === 'slice') drawSlice();
     else drawCupcake();
   }
 
