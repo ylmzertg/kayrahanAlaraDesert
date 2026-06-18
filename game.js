@@ -97,7 +97,7 @@
 
   // --- 4) İçerik tanımı ---
   const CAKE = { cx: 270, plateY: 470 };
-  const BASES = [{ id: 'cupcake', icon: '🧁' }, { id: 'ice', icon: '🍦' }, { id: 'cookie', icon: '🍪' }, { id: 'donut', icon: '🍩' }, { id: 'slice', icon: '🍰' }];
+  const BASES = [{ id: 'cupcake', icon: '🧁' }, { id: 'ice', icon: '🍦' }, { id: 'cookie', icon: '🍪' }, { id: 'donut', icon: '🍩' }, { id: 'slice', icon: '🍰' }, { id: 'pancake', icon: '🥞' }];
   // Her tatlı için süs yerleştirme (krema) elipsi
   const FROST_BY_BASE = {
     cupcake: { cx: 270, cy: 360, rx: 108, ry: 78 },
@@ -105,6 +105,7 @@
     cookie:  { cx: 270, cy: 384, rx: 104, ry: 54 },
     donut:   { cx: 270, cy: 350, rx: 100, ry: 44 },
     slice:   { cx: 270, cy: 338, rx: 96,  ry: 52 },
+    pancake: { cx: 270, cy: 348, rx: 104, ry: 40 },
   };
 
   const COLORS = [
@@ -143,6 +144,8 @@
   let screen = 'select';        // 'select' (karakter seç) | 'play' | 'shop'
   let character = 'kayrahan';   // seçili karakter: 'kayrahan' | 'alara'
   let shopOwned = {};           // satın alınan dükkân süsleri {id:true}
+  let lastDaily = '';           // son günlük ödül tarihi (toDateString)
+  let dailyPending = 0;         // gösterilecek günlük ödül miktarı
   let creamBlobs = [];          // sürükleyerek sıkılan krema (her biri {x,y,r,col})
   let drizzles = [];            // şurup çizgileri [{col, pts:[{x,y}]}]
   let mode = 'cream';           // 'cream' (krema sık) | 'syrup' (sos çek) | 'topping' (süs koy)
@@ -159,7 +162,7 @@
   // İlk servisten sonra gelişmiş özellikler açılır (kademeli açılım). Kalıcı (served kaydedilir).
   function revealed() { return served >= 1; }
   function visTop() { return revealed() ? TOPPINGS.length : 5; }   // başta sadece 5 ücretsiz süs
-  function save() { SDK.saveData({ coins, served, unlocked, soundOn, hapticsOn, character, shopOwned }); }
+  function save() { SDK.saveData({ coins, served, unlocked, soundOn, hapticsOn, character, shopOwned, lastDaily }); }
   function showToast(txt) { toast = txt; toastFx = 90; }
 
   // --- 6) Tıklanabilir bölgeler ---
@@ -258,7 +261,7 @@
     const p = cpoint(e);
     // Karakter seçim ekranı
     if (screen === 'select') {
-      for (let i = 0; i < 2; i++) if (inBox(p, cardRect(i))) { character = i === 0 ? 'kayrahan' : 'alara'; screen = 'play'; Sound.buy(); Haptics.buzz(20); save(); return; }
+      for (let i = 0; i < 2; i++) if (inBox(p, cardRect(i))) { character = i === 0 ? 'kayrahan' : 'alara'; screen = 'play'; Sound.buy(); Haptics.buzz(20); if (dailyPending) { showToast('🎁 Daily reward +' + dailyPending + ' 🪙'); dailyPending = 0; } save(); return; }
       return;
     }
     // Dükkân ekranı
@@ -443,11 +446,26 @@
     ctx.fillStyle = 'rgba(0,0,0,0.06)'; ctx.fillRect(cx - 96, 458, 192, 10);
   }
 
+  function drawPancake() {
+    const cx = CAKE.cx;
+    drawPlate();
+    // 3 katlı pankek (krema/sos oyuncu tarafından üste sıkılır)
+    const colors = ['#e0a85a', '#e8b366', '#d99a4e'];
+    for (let i = 0; i < 3; i++) {
+      const y = 430 - i * 34;
+      ctx.fillStyle = colors[i]; ctx.beginPath(); ctx.ellipse(cx, y, 100 - i * 6, 26, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = 'rgba(120,70,20,0.12)'; ctx.beginPath(); ctx.ellipse(cx, y + 8, 100 - i * 6, 14, 0, 0, 7); ctx.fill();
+    }
+    // bir parça tereyağı (tepe)
+    ctx.fillStyle = '#ffe6a8'; roundRect(cx - 16, 350, 32, 18, 5); ctx.fill();
+  }
+
   function drawBase() {
     if (base === 'ice') drawIce();
     else if (base === 'cookie') drawCookie();
     else if (base === 'donut') drawDonut();
     else if (base === 'slice') drawSlice();
+    else if (base === 'pancake') drawPancake();
     else drawCupcake();
   }
 
@@ -552,14 +570,33 @@
   }
 
   function drawCustomer(cx, cy, r, seed) {
-    const skins = ['#ffd8b0', '#f1c27d', '#e0ac69', '#c68642'];
-    const hairs = ['#3a2a1a', '#6b4423', '#1f1f1f', '#a85b2b', '#caa84a'];
+    const skins = ['#ffd8b0', '#f1c27d', '#e0ac69', '#c68642', '#ffe0c0'];
+    const hairs = ['#3a2a1a', '#6b4423', '#1f1f1f', '#a85b2b', '#caa84a', '#7a3b55', '#d98695'];
     const sk = skins[seed % skins.length], ha = hairs[(seed * 3) % hairs.length];
+    // yüz
     ctx.fillStyle = sk; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
-    ctx.fillStyle = ha; ctx.beginPath(); ctx.arc(cx, cy - 2, r, Math.PI * 1.05, Math.PI * 1.95); ctx.fill();
+    // saç + stil (topuz / kâkül)
+    ctx.fillStyle = ha; ctx.beginPath(); ctx.arc(cx, cy - 2, r, Math.PI * 1.02, Math.PI * 1.98); ctx.fill();
+    if (seed % 3 === 0) { ctx.beginPath(); ctx.arc(cx, cy - r * 0.98, r * 0.34, 0, 7); ctx.fill(); }          // topuz
+    else if (seed % 3 === 1) { ctx.beginPath(); ctx.ellipse(cx, cy - r * 0.55, r * 0.9, r * 0.3, 0, 0, 7); ctx.fill(); } // kâkül
+    // gözler
     ctx.fillStyle = '#1b2540'; ctx.beginPath(); ctx.arc(cx - r * 0.35, cy - r * 0.1, r * 0.13, 0, 7); ctx.arc(cx + r * 0.35, cy - r * 0.1, r * 0.13, 0, 7); ctx.fill();
+    // ağız
     ctx.strokeStyle = '#1b2540'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy + r * 0.12, r * 0.42, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+    // yanak
     ctx.fillStyle = 'rgba(255,120,150,0.4)'; ctx.beginPath(); ctx.arc(cx - r * 0.52, cy + r * 0.2, r * 0.16, 0, 7); ctx.arc(cx + r * 0.52, cy + r * 0.2, r * 0.16, 0, 7); ctx.fill();
+    // aksesuar
+    const acc = seed % 4;
+    if (acc === 1) { // gözlük
+      ctx.strokeStyle = '#1b2540'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx - r * 0.35, cy - r * 0.1, r * 0.22, 0, 7); ctx.arc(cx + r * 0.35, cy - r * 0.1, r * 0.22, 0, 7); ctx.moveTo(cx - r * 0.13, cy - r * 0.1); ctx.lineTo(cx + r * 0.13, cy - r * 0.1); ctx.stroke();
+    } else if (acc === 2) { // fiyonk
+      ctx.fillStyle = '#ff5d8f';
+      ctx.beginPath(); ctx.moveTo(cx - r * 0.1, cy - r * 0.92); ctx.lineTo(cx - r * 0.55, cy - r * 1.18); ctx.lineTo(cx - r * 0.55, cy - r * 0.66); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(cx + r * 0.1, cy - r * 0.92); ctx.lineTo(cx + r * 0.55, cy - r * 1.18); ctx.lineTo(cx + r * 0.55, cy - r * 0.66); ctx.closePath(); ctx.fill();
+    } else if (acc === 3) { // çiller
+      ctx.fillStyle = 'rgba(150,90,40,0.5)'; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(cx + (i % 2 ? r * 0.5 : -r * 0.5), cy + r * 0.04 + (i > 1 ? 4 : -2), 1.4, 0, 7); ctx.fill(); }
+    }
   }
 
   function drawOrder() {
@@ -704,10 +741,19 @@
     // şef (seçili karakter, köşe)
     const ci = chefImg();
     if (ci) { const ar = ci.naturalWidth / ci.naturalHeight || 1, dh = 150, dw = dh * ar; ctx.globalAlpha = 0.95; ctx.drawImage(ci, 8, 150, dw, dh); ctx.globalAlpha = 1; }
+    // Servis animasyonu: bitmiş tatlı yukarı süzülüp küçülür (müşteriye gider)
+    const serving = serveFlash > 0;
+    if (serving) {
+      const pr = Math.min(1, (60 - serveFlash) / 40);
+      ctx.save();
+      ctx.globalAlpha = 1 - pr * 0.75;
+      ctx.translate(270, 380 - pr * 90); ctx.scale(1 - pr * 0.6, 1 - pr * 0.6); ctx.translate(-270, -380);
+    }
     drawBase();
     drawCream();
     drawDrizzle();
     for (const s of placed) drawTopping(s.type, s.x, s.y, s.rot, s.col);
+    if (serving) ctx.restore();
     drawConfetti();
     drawBaseSelect();
     drawPalettes();
@@ -735,7 +781,11 @@
       if (s.hapticsOn === false) hapticsOn = false;
       if (s.character === 'alara' || s.character === 'kayrahan') character = s.character;
       if (s.shopOwned) shopOwned = s.shopOwned;
+      if (typeof s.lastDaily === 'string') lastDaily = s.lastDaily;
     }
+    // Günlük ödül: gün değiştiyse +20 (oyuncu girişte bildirilir)
+    const today = new Date().toDateString();
+    if (lastDaily !== today) { coins += 20; lastDaily = today; dailyPending = 20; save(); }
     Haptics.setEnabled(hapticsOn); applyAudio();
     SDK.onAudioEnabledChange(() => applyAudio());
     SDK.onPause(() => { Sound.musicStop(); }); SDK.onResume(() => { Sound.musicStart(); });
