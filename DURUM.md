@@ -28,6 +28,8 @@ Açılışta **Kayrahan** (`assets/hero.png`) veya **Alara** (`assets/alara.png`
 - 5 tatlı çeşidi: kek/dondurma/kurabiye/donut/pasta dilimi
 - Ses efektleri + titreşim + ikisi için aç/kapa; `sendScore`; İngilizce arayüz
 - Kalıcılık: `saveData` SDK **+ localStorage çift-yazma**
+- Dükkân meta'sı: 🛍️ My Shop ekranı (parayla bayrak/bitki/pencere/tezgah)
+- **İlk deneyim:** 3 adımlı mini tutorial (👇 krema→süs→servis) + kademeli açılım (ilk servise kadar sade: 5 süs; sos/kilitli süs/Shop gizli)
 
 ## ⏳ Kalan yol haritası (sırayla)
 - ~~Faz 3.1 sos · 3.2 yeni süsler · 3.3 yeni çeşitler · 3.4 ek renkler~~ ✅ TAMAM
