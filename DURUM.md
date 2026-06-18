@@ -30,9 +30,9 @@ Açılışta **Kayrahan** (`assets/hero.png`) veya **Alara** (`assets/alara.png`
 - Kalıcılık: `saveData` SDK **+ localStorage çift-yazma**
 
 ## ⏳ Kalan yol haritası (sırayla)
-- ~~Faz 3.1 sos · 3.2 yeni süsler · 3.3 yeni çeşitler (donut/dilim) · 3.4 ek renkler~~ ✅ TAMAM
-- **Faz 4** — Dükkân yükseltme/süsleme meta'sı (parayla; retention) ← SIRADAKİ
-- **Faz 5** — Cila: müşteri tepkileri, yıldız puan, arka plan müziği, paylaş
+- ~~Faz 3.1 sos · 3.2 yeni süsler · 3.3 yeni çeşitler · 3.4 ek renkler~~ ✅ TAMAM
+- ~~Faz 4 — Dükkân meta'sı (My Shop ekranı: parayla bayrak/bitki/pencere/tezgah)~~ ✅ TAMAM
+- **Faz 5** — Cila: müşteri tepkileri, yıldız puan, arka plan müziği, paylaş ← SIRADAKİ
 (Detaylı analiz + karar: `youtubeOrnekOyunlar.md`)
 
 ## Yerel çalıştırma / önizleme
