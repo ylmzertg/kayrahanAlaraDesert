@@ -25,7 +25,8 @@ Açılışta **Kayrahan** (`assets/hero.png`) veya **Alara** (`assets/alara.png`
 - 8 süs: çilek, çikolata, gökkuşağı şeker, kalp, muz (ücretsiz) + kiraz(15), yaban mersini(20), yıldız(30) kilitli
 - 3 tatlı çeşidi: kek 🧁 / dondurma 🍦 / kurabiye 🍪 (sağdan seçilir)
 - 8 krema rengi (pembe/çikolata/vanilya/nane/mavi/mor/kırmızı/beyaz); servis → para; parayla kilit açma
-- 5 tatlı çeşidi: kek/dondurma/kurabiye/donut/pasta dilimi
+- 6 tatlı çeşidi: kek/dondurma/kurabiye/donut/pasta dilimi/pankek
+- Günlük ödül (+20/gün), animasyonlu servis, çeşitli müşteriler (aksesuarlı)
 - Ses efektleri + titreşim + ikisi için aç/kapa; `sendScore`; İngilizce arayüz
 - Kalıcılık: `saveData` SDK **+ localStorage çift-yazma**
 - Dükkân meta'sı: 🛍️ My Shop ekranı (parayla bayrak/bitki/pencere/tezgah)
