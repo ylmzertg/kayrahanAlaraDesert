@@ -92,6 +92,9 @@
     { id: 'vanilla',c: '#ffe6a8' },
     { id: 'mint',   c: '#9be3c4' },
     { id: 'blue',   c: '#9ec9ff' },
+    { id: 'purple', c: '#c98bff' },
+    { id: 'red',    c: '#ff6b6b' },
+    { id: 'white',  c: '#ffffff' },
   ];
 
   // free:true → açık; değilse price ile kilitli
@@ -139,7 +142,7 @@
   const clearBtn  = { x: W - 76, y: 700, w: 60, h: 56 };
   const syrupBtn  = { x: W - 146, y: 700, w: 60, h: 56 };   // sos (seçili renkte) modu
   function cardRect(i) { return { x: 50 + i * 250, y: 300, w: 190, h: 330 }; }   // karakter seçim kartları
-  function colorRect(i) { const sw = 58, gap = 14, total = COLORS.length * sw + (COLORS.length - 1) * gap; const x0 = (W - total) / 2; return { x: x0 + i * (sw + gap), y: 520, w: sw, h: 58 }; }
+  function colorRect(i) { const n = COLORS.length, gap = 10, sw = Math.min(58, (W - 44 - (n - 1) * gap) / n), total = n * sw + (n - 1) * gap, x0 = (W - total) / 2; return { x: x0 + i * (sw + gap), y: 520, w: sw, h: 58 }; }
   function topRect(i)   { const n = TOPPINGS.length, gap = 8, sw = Math.min(64, (W - 44 - (n - 1) * gap) / n), total = n * sw + (n - 1) * gap, x0 = (W - total) / 2; return { x: x0 + i * (sw + gap), y: 612, w: sw, h: 70 }; }
   function baseRect(i)  { return { x: W - 70, y: 200 + i * 82, w: 58, h: 70 }; }   // sağda tatlı seçim sütunu
 
