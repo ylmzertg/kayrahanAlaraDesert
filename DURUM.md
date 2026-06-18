@@ -33,8 +33,11 @@ Açılışta **Kayrahan** (`assets/hero.png`) veya **Alara** (`assets/alara.png`
 
 ## ⏳ Kalan yol haritası (sırayla)
 - ~~Faz 3.1 sos · 3.2 yeni süsler · 3.3 yeni çeşitler · 3.4 ek renkler~~ ✅ TAMAM
-- ~~Faz 4 — Dükkân meta'sı (My Shop ekranı: parayla bayrak/bitki/pencere/tezgah)~~ ✅ TAMAM
-- **Faz 5** — Cila: müşteri tepkileri, yıldız puan, arka plan müziği, paylaş ← SIRADAKİ
+- ~~Faz 4 — Dükkân meta'sı (My Shop ekranı)~~ ✅ TAMAM
+- ~~Faz 5 — Cila: müşteri tepkisi + yıldız puanı (5.1) · arka plan müziği (5.2)~~ ✅ TAMAM
+- ~~İlk deneyim: mini tutorial + kademeli açılım~~ ✅ TAMAM
+
+**🎉 Yol haritası tamamlandı.** Sıradaki fikirler (opsiyonel): daha çok süs/çeşit, günlük ödül, daha çok müşteri çeşidi, animasyonlu servis. Asıl öneri: repo'yu public yapıp gerçek bir çocukla test.
 (Detaylı analiz + karar: `youtubeOrnekOyunlar.md`)
 
 ## Yerel çalıştırma / önizleme
