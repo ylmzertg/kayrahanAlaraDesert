@@ -129,6 +129,8 @@
   let confetti = [];
   let toast = null, toastFx = 0;
   let serveFlash = 0;           // servis kutlama animasyonu
+  let lastStars = 0;            // son serviste alınan yıldız (1-3)
+  let lastReact = '';           // müşteri tepki emojisi
   let tms = 0;                  // zaman
   let firstFrameSent = false;
 
@@ -154,7 +156,7 @@
     { id: 'window',  name: 'Window',  icon: '🪟', price: 40 },
     { id: 'counter', name: 'Counter', icon: '🪑', price: 60 },
   ];
-  const shopBtn   = { x: 16, y: 74, w: 120, h: 38 };          // play ekranında "Shop" aç
+  const shopBtn   = { x: 16, y: 700, w: 104, h: 56 };         // play ekranında "Shop" aç (alt-sol)
   const shopClose = { x: W - 58, y: 16, w: 46, h: 46 };       // shop ekranında kapat
   function shopCard(i) { const n = SHOP.length, gap = 12, cw = (W - 32 - gap * (n - 1)) / n, x0 = 16; return { x: x0 + i * (cw + gap), y: 800, w: cw, h: 110 }; }
   function colorRect(i) { const n = COLORS.length, gap = 10, sw = Math.min(58, (W - 44 - (n - 1) * gap) / n), total = n * sw + (n - 1) * gap, x0 = (W - total) / 2; return { x: x0 + i * (sw + gap), y: 520, w: sw, h: 58 }; }
@@ -202,6 +204,8 @@
     const perfect = matchBase && matchTop;
     const reward = 5 + Math.min(15, placed.length) + (drizzles.length ? 3 : 0) + (matchBase ? 5 : 0) + (matchTop ? 5 : 0);
     coins += reward; served++;
+    lastStars = perfect ? 3 : (matchBase || matchTop) ? 2 : 1;
+    lastReact = perfect ? '🤩' : (lastStars === 2 ? '😋' : '🙂');
     Sound.serve(); Haptics.buzz([20, 40, 20]);
     showToast((perfect ? '🤩 Perfect!  +' : '😋 Yummy!  +') + reward + ' 🪙');
     serveFlash = 60;
@@ -646,6 +650,29 @@
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   }
 
+  function drawRatingStar(cx, cy, r, filled) {
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) { const rr = i % 2 ? r * 0.45 : r; const a = -Math.PI / 2 + i * Math.PI / 5; const px = cx + Math.cos(a) * rr, py = cy + Math.sin(a) * rr; if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); }
+    ctx.closePath();
+    ctx.fillStyle = filled ? '#ffd23f' : '#e3d9de'; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = filled ? '#ffab00' : '#c8bcc4'; ctx.stroke();
+  }
+
+  // Servis kutlamasında müşteri tepkisi + yıldız puanı
+  function drawReaction() {
+    if (serveFlash <= 0) return;
+    const cx = W / 2, y = 250;
+    const pop = Math.min(1, (60 - serveFlash) / 8);   // küçük açılış animasyonu
+    ctx.save();
+    ctx.translate(cx, y); ctx.scale(pop, pop); ctx.translate(-cx, -y);
+    ctx.fillStyle = 'rgba(255,255,255,0.96)'; roundRect(cx - 130, y - 78, 260, 150, 22); ctx.fill();
+    ctx.strokeStyle = '#ff9ec0'; ctx.lineWidth = 4; roundRect(cx - 130, y - 78, 260, 150, 22); ctx.stroke();
+    drawCustomer(cx - 56, y - 20, 30, custSeed);
+    ctx.font = '40px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(lastReact, cx + 36, y - 24);
+    for (let i = 0; i < 3; i++) drawRatingStar(cx - 44 + i * 44, y + 42, 18, i < lastStars);
+    ctx.restore();
+  }
+
   function render() {
     ctx.clearRect(0, 0, W, H);
     if (screen === 'select') { drawSelect(); return; }
@@ -667,6 +694,7 @@
     drawHUD();
     drawOrder();
     drawTutorial();
+    drawReaction();
   }
 
   function loop() {
