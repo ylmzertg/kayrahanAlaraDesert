@@ -47,6 +47,25 @@
       g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.02);
     }
+    // Arka plan müziği — yumuşak, döngülü, alçak sesli (harici dosya yok)
+    let musicTimer = null, mi = 0;
+    const MELODY = [523, 0, 659, 784, 880, 0, 784, 659, 587, 0, 659, 523, 440, 0, 523, 0];
+    const BASS   = [131, 0, 0, 0, 165, 0, 0, 0, 147, 0, 0, 0, 98, 0, 0, 0];
+    function musicStep() {
+      mi++;
+      if (muted) return;
+      const a = ensure(); if (!a) return;
+      const t = a.currentTime;
+      const play = (f, type, vol, dur) => {
+        if (!f) return;
+        const o = a.createOscillator(), g = a.createGain();
+        o.type = type; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.02);
+      };
+      play(MELODY[mi % MELODY.length], 'triangle', 0.04, 0.26);
+      play(BASS[mi % BASS.length], 'sine', 0.05, 0.32);
+    }
     return {
       unlock() { ensure(); }, setMuted(m) { muted = m; },
       pop()  { tone('triangle', 700, 0.06, 0.14, 1000); },
@@ -54,6 +73,8 @@
       serve(){ [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => tone('triangle', f, 0.14, 0.18), i * 90)); },
       buy()  { [659, 988].forEach((f, i) => setTimeout(() => tone('triangle', f, 0.12, 0.18), i * 90)); },
       nope() { tone('sawtooth', 200, 0.16, 0.13, 150); },
+      musicStart() { if (!musicTimer) { ensure(); musicTimer = setInterval(musicStep, 300); } },
+      musicStop()  { if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } },
     };
   })();
   const Haptics = (() => {
@@ -233,7 +254,7 @@
 
   let drawingBase = false;
   canvas.addEventListener('pointerdown', (e) => {
-    Sound.unlock(); applyAudio();
+    Sound.unlock(); applyAudio(); Sound.musicStart();
     const p = cpoint(e);
     // Karakter seçim ekranı
     if (screen === 'select') {
@@ -717,7 +738,7 @@
     }
     Haptics.setEnabled(hapticsOn); applyAudio();
     SDK.onAudioEnabledChange(() => applyAudio());
-    SDK.onPause(() => {}); SDK.onResume(() => {});
+    SDK.onPause(() => { Sound.musicStop(); }); SDK.onResume(() => { Sound.musicStart(); });
     newOrder();
     loop();
     SDK.gameReady();
