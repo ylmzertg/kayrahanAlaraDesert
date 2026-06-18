@@ -119,8 +119,9 @@
   let tool = 'strawberry';      // seçili süs
   let order = null;             // müşteri siparişi { base, topping }
   let custSeed = 0;             // müşteri görünüş çeşitliliği
-  let screen = 'select';        // 'select' (karakter seç) | 'play'
+  let screen = 'select';        // 'select' (karakter seç) | 'play' | 'shop'
   let character = 'kayrahan';   // seçili karakter: 'kayrahan' | 'alara'
+  let shopOwned = {};           // satın alınan dükkân süsleri {id:true}
   let creamBlobs = [];          // sürükleyerek sıkılan krema (her biri {x,y,r,col})
   let drizzles = [];            // şurup çizgileri [{col, pts:[{x,y}]}]
   let mode = 'cream';           // 'cream' (krema sık) | 'syrup' (sos çek) | 'topping' (süs koy)
@@ -132,7 +133,7 @@
   let firstFrameSent = false;
 
   function applyAudio() { Sound.setMuted(!soundOn || !SDK.audioEnabled()); }
-  function save() { SDK.saveData({ coins, served, unlocked, soundOn, hapticsOn, character }); }
+  function save() { SDK.saveData({ coins, served, unlocked, soundOn, hapticsOn, character, shopOwned }); }
   function showToast(txt) { toast = txt; toastFx = 90; }
 
   // --- 6) Tıklanabilir bölgeler ---
@@ -142,6 +143,17 @@
   const clearBtn  = { x: W - 76, y: 700, w: 60, h: 56 };
   const syrupBtn  = { x: W - 146, y: 700, w: 60, h: 56 };   // sos (seçili renkte) modu
   function cardRect(i) { return { x: 50 + i * 250, y: 300, w: 190, h: 330 }; }   // karakter seçim kartları
+
+  // Dükkân süsleri (My Shop ekranında parayla alınır, dükkân odasında görünür)
+  const SHOP = [
+    { id: 'bunting', name: 'Flags',   icon: '🎏', price: 15 },
+    { id: 'plant',   name: 'Plant',   icon: '🪴', price: 25 },
+    { id: 'window',  name: 'Window',  icon: '🪟', price: 40 },
+    { id: 'counter', name: 'Counter', icon: '🪑', price: 60 },
+  ];
+  const shopBtn   = { x: 16, y: 74, w: 120, h: 38 };          // play ekranında "Shop" aç
+  const shopClose = { x: W - 58, y: 16, w: 46, h: 46 };       // shop ekranında kapat
+  function shopCard(i) { const n = SHOP.length, gap = 12, cw = (W - 32 - gap * (n - 1)) / n, x0 = 16; return { x: x0 + i * (cw + gap), y: 800, w: cw, h: 110 }; }
   function colorRect(i) { const n = COLORS.length, gap = 10, sw = Math.min(58, (W - 44 - (n - 1) * gap) / n), total = n * sw + (n - 1) * gap, x0 = (W - total) / 2; return { x: x0 + i * (sw + gap), y: 520, w: sw, h: 58 }; }
   function topRect(i)   { const n = TOPPINGS.length, gap = 8, sw = Math.min(64, (W - 44 - (n - 1) * gap) / n), total = n * sw + (n - 1) * gap, x0 = (W - total) / 2; return { x: x0 + i * (sw + gap), y: 612, w: sw, h: 70 }; }
   function baseRect(i)  { return { x: W - 70, y: 200 + i * 82, w: 58, h: 70 }; }   // sağda tatlı seçim sütunu
@@ -221,6 +233,19 @@
       for (let i = 0; i < 2; i++) if (inBox(p, cardRect(i))) { character = i === 0 ? 'kayrahan' : 'alara'; screen = 'play'; Sound.buy(); Haptics.buzz(20); save(); return; }
       return;
     }
+    // Dükkân ekranı
+    if (screen === 'shop') {
+      if (inBox(p, shopClose)) { screen = 'play'; Sound.pick(); return; }
+      for (let i = 0; i < SHOP.length; i++) if (inBox(p, shopCard(i))) {
+        const it = SHOP[i];
+        if (shopOwned[it.id]) { Sound.nope(); }
+        else if (coins >= it.price) { coins -= it.price; shopOwned[it.id] = true; Sound.buy(); Haptics.buzz([15, 30, 15]); save(); }
+        else { Sound.nope(); Haptics.buzz(30); }
+        return;
+      }
+      return;
+    }
+    if (inBox(p, shopBtn))   { screen = 'shop'; Sound.pick(); Haptics.buzz(8); return; }
     if (inBox(p, soundBtn))  { soundOn = !soundOn; applyAudio(); Haptics.buzz(10); save(); return; }
     if (inBox(p, hapticBtn)) { hapticsOn = !hapticsOn; Haptics.setEnabled(hapticsOn); if (hapticsOn) Haptics.buzz(20); save(); return; }
     if (inBox(p, serveBtn))  { serve(); return; }
@@ -477,6 +502,10 @@
     ctx.fillStyle = '#fff'; ctx.font = 'bold 19px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Dessert Shop', W / 2, 37);
     ctx.textAlign = 'left';
     drawToggle(soundBtn, '🔊', soundOn); drawToggle(hapticBtn, '📳', hapticsOn);
+    // Shop butonu (sol, coins altı)
+    ctx.fillStyle = 'rgba(120,60,90,0.55)'; roundRect(shopBtn.x, shopBtn.y, shopBtn.w, shopBtn.h, 12); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('🛍️ Shop', shopBtn.x + shopBtn.w / 2, shopBtn.y + shopBtn.h / 2);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     // Hint / celebration
     ctx.textAlign = 'center'; ctx.font = 'bold 19px sans-serif';
     ctx.fillStyle = serveFlash > 0 ? '#ff3b78' : 'rgba(120,60,90,0.85)';
@@ -545,9 +574,56 @@
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   }
 
+  function drawShopDecor(id) {
+    if (id === 'bunting') {
+      const cols = ['#ff5d73', '#ffd23f', '#5fd068', '#5ec5ff', '#c98bff'];
+      ctx.strokeStyle = '#b58b5a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(30, 150); ctx.lineTo(W - 30, 150); ctx.stroke();
+      for (let i = 0; i < 9; i++) { const x = 38 + i * 56; ctx.fillStyle = cols[i % 5]; ctx.beginPath(); ctx.moveTo(x, 150); ctx.lineTo(x + 40, 150); ctx.lineTo(x + 20, 184); ctx.closePath(); ctx.fill(); }
+    } else if (id === 'plant') {
+      const x = 95, y = 502; ctx.fillStyle = '#b5651d'; roundRect(x - 26, y, 52, 56, 8); ctx.fill();
+      ctx.fillStyle = '#3fa34d'; for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + (i - 2) * 0.5; ctx.beginPath(); ctx.ellipse(x + Math.cos(a) * 20, y - 12 + Math.sin(a) * 20, 14, 34, a, 0, 7); ctx.fill(); }
+    } else if (id === 'window') {
+      const wx = 430, wy = 250; ctx.fillStyle = '#7fb3ff'; roundRect(wx - 58, wy - 54, 116, 108, 8); ctx.fill();
+      ctx.fillStyle = '#dff0ff'; ctx.beginPath(); ctx.arc(wx + 20, wy - 16, 15, 0, 7); ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 8; ctx.strokeRect(wx - 58, wy - 54, 116, 108); ctx.beginPath(); ctx.moveTo(wx, wy - 54); ctx.lineTo(wx, wy + 54); ctx.moveTo(wx - 58, wy); ctx.lineTo(wx + 58, wy); ctx.stroke();
+    } else if (id === 'counter') {
+      ctx.fillStyle = '#caa06a'; roundRect(130, 496, 280, 76, 12); ctx.fill();
+      ctx.fillStyle = '#a9794a'; ctx.fillRect(130, 496, 280, 14);
+    }
+  }
+
+  function drawShop() {
+    const g = ctx.createLinearGradient(0, 0, 0, 560); g.addColorStop(0, '#ffe3c7'); g.addColorStop(1, '#ffd0a8'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, 560);
+    ctx.fillStyle = '#c8895a'; ctx.fillRect(0, 560, W, H - 560);
+    ctx.fillStyle = '#a96b3c'; ctx.fillRect(0, 552, W, 8);
+    for (const it of SHOP) if (shopOwned[it.id]) drawShopDecor(it.id);
+    // başlık
+    ctx.fillStyle = '#7a3b55'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = 'bold 34px sans-serif'; ctx.fillText('🛍️ My Shop', W / 2, 50);
+    // coin
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; roundRect(16, 16, 116, 44, 12); ctx.fill();
+    ctx.fillStyle = '#ffd23f'; ctx.beginPath(); ctx.arc(40, 38, 12, 0, 7); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.font = 'bold 22px sans-serif'; ctx.fillText(coins, 58, 39);
+    // kapat
+    ctx.fillStyle = 'rgba(0,0,0,0.4)'; roundRect(shopClose.x, shopClose.y, shopClose.w, shopClose.h, 12); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = 'bold 26px sans-serif'; ctx.fillText('✕', shopClose.x + shopClose.w / 2, shopClose.y + shopClose.h / 2 + 1);
+    // satın alma çubuğu
+    ctx.fillStyle = 'rgba(40,30,20,0.85)'; ctx.fillRect(0, 786, W, H - 786);
+    for (let i = 0; i < SHOP.length; i++) {
+      const it = SHOP[i], r = shopCard(i), have = shopOwned[it.id], can = coins >= it.price;
+      ctx.fillStyle = have ? 'rgba(90,160,90,0.5)' : (can ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.07)'); roundRect(r.x, r.y, r.w, r.h, 12); ctx.fill();
+      ctx.globalAlpha = have || can ? 1 : 0.5;
+      ctx.textAlign = 'center'; ctx.font = '34px sans-serif'; ctx.fillStyle = '#fff'; ctx.fillText(it.icon, r.x + r.w / 2, r.y + 38);
+      ctx.font = 'bold 15px sans-serif'; ctx.fillText(it.name, r.x + r.w / 2, r.y + 66);
+      ctx.fillStyle = have ? '#bfe3a0' : '#ffd23f'; ctx.font = 'bold 16px sans-serif'; ctx.fillText(have ? '✓' : (it.price + ' 🪙'), r.x + r.w / 2, r.y + 90);
+      ctx.globalAlpha = 1;
+    }
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  }
+
   function render() {
     ctx.clearRect(0, 0, W, H);
     if (screen === 'select') { drawSelect(); return; }
+    if (screen === 'shop') { drawShop(); return; }
     // arka plan zemin
     ctx.fillStyle = '#ffd9e6'; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = '#ffe9f1'; ctx.fillRect(0, 470, W, H - 470);
@@ -582,6 +658,7 @@
       if (s.soundOn === false) soundOn = false;
       if (s.hapticsOn === false) hapticsOn = false;
       if (s.character === 'alara' || s.character === 'kayrahan') character = s.character;
+      if (s.shopOwned) shopOwned = s.shopOwned;
     }
     Haptics.setEnabled(hapticsOn); applyAudio();
     SDK.onAudioEnabledChange(() => applyAudio());
